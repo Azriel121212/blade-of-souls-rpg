@@ -22,6 +22,23 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
   - Bar darah widescreen megah di bagian atas layar dengan nama dinamis para Boss legendaris (*Lord Malakor Void Titan*, *Baron Ignis Flame Warden*, *King Oblivion Soul Eater*).
   - Menampilkan bar HP merah gradient dan bar Poise kuning Sekiro-style secara berdampingan.
   - Dilengkapi indikator lencana status pertempuran real-time seperti `💥 GUARD BROKEN!` dan `🔥 ENRAGED!`.
+- **🏆 Roguelike Relic / Artifact Choice System (Peti Emas Boss)**:
+  - Mengalahkan Boss memunculkan **Golden Mystic Chest** (`RelicChest`) bercahaya emas.
+  - Membuka peti memicu overlay pilihan kartu **Roguelike (Pilih 1 dari 3 Relic Legendaris Acak)** dengan visual kartu holographic glassmorphic dan sound effect synthesizer retro:
+    - ⚡ **Zeus's Greaves**: Manuver Dash meninggalkan jejak sambaran petir menyala (*Lightning Zap*) yang menyengat musuh sekitar sebesar 30 damage!
+    - 🌀 **Orbital Blade Amulet**: Menghadirkan 2 pedang energi astral berputar mengelilingi pemain yang memotong musuh secara terus-menerus.
+    - 🛡️ **Aegis of the Immortal**: Kubah pelindung emas bercahaya yang memblokir total 1 serangan mematikan setiap 35 detik.
+    - 🔥 **Molten Core**: Serangan fisik dan gelombang pedang membakar musuh dengan api lahar (DoT 4 damage per 0.5 detik).
+    - 🩸 **Vampiric Bloodstone**: Mengumpulkan jiwa musuh dan memulihkan +25 HP secara instan setiap kelipatan 10 monster yang dibunuh.
+    - ❄️ **Frostbite Ring**: Peluang 40% tiap serangan membekukan musuh (*Frostbite*), memperlambat laju lari mereka hingga 50%!
+    - 🧲 **Midas Magnet**: Memperluas jangkauan magnet koin dan drop hingga 3x lipat (330px) serta memberi bonus +30% koin ekstra.
+  - Koleksi Relic aktif ditampilkan rapi di baki lencana bawah HUD (`#relic-tray`).
+- **🍃 Ambient Biome Weather & Atmospheric Particle System**:
+  - Simulasi partikel cuaca dinamis real-time yang bertransisi otomatis sesuai lantai/biome:
+    - **Whispering Forest (Lvl 1 - 25)**: Daun-daun hijau dan keemasan berterbangan tertiup angin sepoi hutan.
+    - **Ancient Catacombs (Lvl 26 - 50)**: Kabut tebal merayap di lantai ubin batu purba dan partikel debu makam misterius.
+    - **Volcanic Abyss (Lvl 51 - 75)**: Percikan bara api lahar (*fiery embers*) yang melayang naik dari kerak magma.
+    - **Frozen Astral Void (Lvl 76+)**: Hujan kepingan salju kristal es lembut dan bintang astral kosmik berkelip.
 - **🗺️ Arena & Biome Progression (Perpindahan Lantai Tiap 25 Level)**:
   - Mengalahkan Boss tiap kelipatan 5 level memunculkan **Sub-Guardians / Mini-Bosses**, dan di level 25, 50, 75, 100 memunculkan **Apex Floor Overlords** yang membuka gerbang ke lantai berikutnya:
     - **Floor 1: Whispering Forest (Level 1 - 25)**: Lantai rumput hijau subur, pepohonan rimbun, semak belukar. Apex Boss: *Lord Malakor, Void Titan*.

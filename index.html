@@ -227,6 +227,24 @@
         <button id="close-shop" class="mt-4 px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded border-2 border-gray-500 text-xs transition">Close Shop (B)</button>
     </div>
 
+    <!-- Relic Active Badges Tray (Bottom HUD) -->
+    <div id="relic-tray" class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-none transition-all duration-300">
+        <!-- Relic icons will be injected dynamically -->
+    </div>
+
+    <!-- Roguelike Relic Choice Modal Screen -->
+    <div id="relic-modal" class="absolute inset-0 bg-black/90 hidden flex-col items-center justify-center z-50 text-white pixel-font p-4 overflow-y-auto">
+        <div class="text-center mb-3">
+            <span class="inline-block px-3 py-1 bg-amber-500/20 text-yellow-300 border border-yellow-400 rounded-full text-[9px] mb-2 font-bold tracking-wider animate-pulse">👑 MYSTIC CHEST OPENED</span>
+            <h2 class="text-xl sm:text-3xl text-yellow-400 text-shadow-lg tracking-wider">CHOOSE A LEGENDARY RELIC</h2>
+            <p class="text-[9px] sm:text-xs text-gray-400 mt-1 max-w-md">Pilih 1 relik mistis untuk memperkuat kemampuanmu sepanjang petualangan ini.</p>
+        </div>
+        
+        <div id="relic-cards-container" class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl w-full px-2">
+            <!-- 3 Dynamic Relic Choice Cards will be rendered here -->
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -370,6 +388,29 @@ function playSound(type) {
         gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.14);
         osc.start(); osc.stop(audioCtx.currentTime + 0.14);
+    } else if (type === 'relic_appear') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.16);
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.24);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.45);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.45);
+    } else if (type === 'relic_select') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.22);
+        gain.gain.setValueAtTime(0.09, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.32);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.32);
+    } else if (type === 'lightning') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.18);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.18);
     }
 }
 
@@ -536,6 +577,372 @@ class GhostTrail {
 }
 let ghostTrails = [];
 
+// ==========================================
+// AMBIENT BIOME WEATHER PARTICLES
+// ==========================================
+class WeatherParticle {
+    constructor(biomeKey) {
+        this.reset(biomeKey, true);
+    }
+
+    reset(biomeKey, initial = false) {
+        this.biomeKey = biomeKey;
+        this.x = Math.random() * canvas.width;
+        this.y = initial ? Math.random() * canvas.height : (biomeKey === 'volcano' ? canvas.height + 10 : -10);
+        this.life = 1.0;
+        this.sway = Math.random() * Math.PI * 2;
+
+        if (biomeKey === 'forest') {
+            this.speedY = 1.1 + Math.random() * 1.4;
+            this.speedX = 0.8 + Math.random() * 0.8;
+            this.swaySpeed = 0.03 + Math.random() * 0.03;
+            this.size = 4 + Math.random() * 4;
+            this.alpha = 0.5 + Math.random() * 0.4;
+            const leafColors = ['#4ade80', '#22c55e', '#a3e635', '#facc15', '#ca8a04'];
+            this.color = leafColors[Math.floor(Math.random() * leafColors.length)];
+            this.rotation = Math.random() * Math.PI;
+            this.rotSpeed = (Math.random() - 0.5) * 0.05;
+        } else if (biomeKey === 'catacombs') {
+            this.speedY = (Math.random() - 0.5) * 0.4;
+            this.speedX = (Math.random() - 0.5) * 0.6;
+            this.swaySpeed = 0.02;
+            this.size = 2 + Math.random() * 3.5;
+            this.alpha = 0.3 + Math.random() * 0.35;
+            this.color = Math.random() < 0.6 ? '#67e8f9' : '#e2e8f0';
+        } else if (biomeKey === 'volcano') {
+            this.speedY = -(1.5 + Math.random() * 2.2);
+            this.speedX = (Math.random() - 0.5) * 1.2;
+            this.swaySpeed = 0.05;
+            this.size = 2 + Math.random() * 3.5;
+            this.alpha = 0.6 + Math.random() * 0.4;
+            const emberColors = ['#ff4500', '#ff8c00', '#ffd700', '#ff2200'];
+            this.color = emberColors[Math.floor(Math.random() * emberColors.length)];
+        } else { // citadel
+            this.speedY = 0.9 + Math.random() * 1.4;
+            this.speedX = (Math.random() - 0.5) * 0.8;
+            this.swaySpeed = 0.025;
+            this.size = 2.5 + Math.random() * 3.5;
+            this.alpha = 0.45 + Math.random() * 0.45;
+            this.color = Math.random() < 0.7 ? '#ffffff' : '#38bdf8';
+        }
+    }
+
+    update() {
+        this.sway += this.swaySpeed;
+        if (this.biomeKey === 'forest') {
+            this.x += Math.sin(this.sway) * 1.2 + this.speedX;
+            this.y += this.speedY;
+            this.rotation += this.rotSpeed;
+            if (this.y > canvas.height + 20 || this.x > canvas.width + 20) {
+                this.reset(this.biomeKey);
+            }
+        } else if (this.biomeKey === 'catacombs') {
+            this.x += this.speedX + Math.sin(this.sway) * 0.3;
+            this.y += this.speedY + Math.cos(this.sway) * 0.3;
+            if (this.x < 0) this.x = canvas.width;
+            if (this.x > canvas.width) this.x = 0;
+            if (this.y < 0) this.y = canvas.height;
+            if (this.y > canvas.height) this.y = 0;
+        } else if (this.biomeKey === 'volcano') {
+            this.x += this.speedX + Math.sin(this.sway) * 0.8;
+            this.y += this.speedY;
+            this.alpha -= 0.003;
+            if (this.y < -10 || this.alpha <= 0) {
+                this.reset(this.biomeKey);
+            }
+        } else { // citadel
+            this.x += this.speedX + Math.sin(this.sway) * 0.6;
+            this.y += this.speedY;
+            if (this.y > canvas.height + 10) {
+                this.reset(this.biomeKey);
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, this.alpha));
+        
+        if (this.biomeKey === 'forest') {
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.size, this.size * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (this.biomeKey === 'volcano') {
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+let weatherParticles = [];
+
+function initWeather() {
+    weatherParticles = [];
+    let count = 45;
+    for (let i = 0; i < count; i++) {
+        weatherParticles.push(new WeatherParticle(currentBiomeKey));
+    }
+}
+
+// ==========================================
+// ZEUS LIGHTNING TRAIL ZAP
+// ==========================================
+class LightningZap {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.life = 25;
+        this.radius = 45;
+        this.damagedEnemies = new Set();
+    }
+    update() {
+        this.life--;
+        enemies.forEach(e => {
+            if (!this.damagedEnemies.has(e) && e.hp > 0 && e.bossState !== 'die') {
+                if (Math.hypot(e.x - this.x, e.y - this.y) < this.radius + e.width/2) {
+                    this.damagedEnemies.add(e);
+                    e.takeDamage(30);
+                    floatingTexts.push(new FloatingText(e.x, e.y - 30, "⚡ 30", "#38bdf8", 16));
+                    playSound('lightning');
+                    for (let p = 0; p < 6; p++) particles.push(new Particle(e.x, e.y, '#38bdf8'));
+                }
+            }
+        });
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life / 25);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 15;
+        
+        ctx.beginPath();
+        for (let b = 0; b < 3; b++) {
+            let angle = (b * Math.PI * 2 / 3) + Math.random() * 0.4;
+            let len = this.radius * (0.6 + Math.random() * 0.4);
+            let midX = this.x + Math.cos(angle) * (len * 0.5) + (Math.random() - 0.5) * 15;
+            let midY = this.y + Math.sin(angle) * (len * 0.5) + (Math.random() - 0.5) * 15;
+            let endX = this.x + Math.cos(angle) * len;
+            let endY = this.y + Math.sin(angle) * len;
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(midX, midY);
+            ctx.lineTo(endX, endY);
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+let lightningZaps = [];
+
+// ==========================================
+// ROGUELIKE RELIC SYSTEM
+// ==========================================
+const RELIC_DATABASE = {
+    zeus_greaves: {
+        id: 'zeus_greaves',
+        name: "⚡ Zeus's Greaves",
+        icon: "⚡",
+        rarity: "LEGENDARY",
+        color: "#38bdf8",
+        desc: "Dash meninggalkan jejak sambaran petir yang menyengat musuh (30 Damage AoE)."
+    },
+    orbital_blades: {
+        id: 'orbital_blades',
+        name: "🌪️ Orbital Blade Amulet",
+        icon: "🌪️",
+        rarity: "MYTHIC",
+        color: "#c084fc",
+        desc: "2 pedang energi berputar mengelilingi pemain, menyayat musuh terdekat (18 Damage)."
+    },
+    aegis_shield: {
+        id: 'aegis_shield',
+        name: "🛡️ Aegis of the Immortal",
+        icon: "🛡️",
+        rarity: "LEGENDARY",
+        color: "#fbbf24",
+        desc: "Membentuk perisai suci yang menepis 1 serangan maut atau damage musuh tiap 35 detik."
+    },
+    ignite_core: {
+        id: 'ignite_core',
+        name: "🔥 Molten Core",
+        icon: "🔥",
+        rarity: "RARE",
+        color: "#f97316",
+        desc: "Semua serangan membakar musuh (Burn DoT: 6 Damage/detik selama 3 detik)."
+    },
+    bloodstone: {
+        id: 'bloodstone',
+        name: "🩸 Vampiric Bloodstone",
+        icon: "🩸",
+        rarity: "RARE",
+        color: "#ef4444",
+        desc: "Tiap 10 monster yang mati memicu ledakan darah yang menyembuhkan +25 HP."
+    },
+    frost_ring: {
+        id: 'frost_ring',
+        name: "❄️ Frostbite Ring",
+        icon: "❄️",
+        rarity: "RARE",
+        color: "#67e8f9",
+        desc: "Serangan berpeluang 40% memperlambat kecepatan musuh sebesar 50% selama 2.5 detik."
+    },
+    midas_magnet: {
+        id: 'midas_magnet',
+        name: "🧲 Midas Magnet",
+        icon: "🧲",
+        rarity: "LEGENDARY",
+        color: "#facc15",
+        desc: "Radius sedot koin & gem meluas 3x lipat, serta nilai koin bertambah +30%."
+    }
+};
+
+class RelicChest {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.radius = 24;
+        this.vy = -3;
+        this.bounce = 2;
+        this.life = 1.0;
+        this.pulse = 0;
+    }
+    update() {
+        this.pulse += 0.05;
+        if (this.bounce > 0) {
+            this.y += this.vy;
+            this.vy += 0.3;
+            if (this.vy > 2.5) { this.vy = -2.0; this.bounce--; }
+        }
+        if (Math.random() < 0.25) {
+            particles.push(new Particle(this.x + (Math.random() - 0.5) * 25, this.y + (Math.random() - 0.5) * 20, '#ffd700'));
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y + Math.sin(this.pulse) * 4);
+        
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(0, 18, 26, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur = 18;
+        ctx.font = "32px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("👑", 0, -2);
+        
+        ctx.shadowBlur = 0;
+        ctx.font = "8px 'Press Start 2P', monospace";
+        ctx.fillStyle = "#ffd700";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.strokeText("RELIC", 0, -26);
+        ctx.fillText("RELIC", 0, -26);
+
+        ctx.restore();
+    }
+}
+
+let isRelicModalOpen = false;
+
+function openRelicModal() {
+    isRelicModalOpen = true;
+    playSound('relic_appear');
+    triggerScreenShake(4);
+    
+    const modal = document.getElementById('relic-modal');
+    const container = document.getElementById('relic-cards-container');
+    if (!modal || !container) return;
+
+    const ownedIds = player ? player.relics.map(r => r.id) : [];
+    let availableKeys = Object.keys(RELIC_DATABASE).filter(k => !ownedIds.includes(k));
+    
+    if (availableKeys.length < 3) {
+        availableKeys = Object.keys(RELIC_DATABASE);
+    }
+
+    let shuffled = [...availableKeys].sort(() => Math.random() - 0.5);
+    let chosenKeys = shuffled.slice(0, 3);
+
+    container.innerHTML = '';
+    chosenKeys.forEach(key => {
+        const r = RELIC_DATABASE[key];
+        const card = document.createElement('div');
+        card.className = "bg-gray-900/90 border-2 hover:border-yellow-300 p-4 rounded-xl flex flex-col items-center text-center cursor-pointer transform hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)]";
+        card.style.borderColor = r.color;
+        
+        card.innerHTML = `
+            <div class="text-4xl mb-2 filter drop-shadow-[0_0_10px_${r.color}]">${r.icon}</div>
+            <span class="text-[8px] uppercase tracking-wider font-bold mb-1" style="color: ${r.color}">${r.rarity}</span>
+            <h3 class="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">${r.name}</h3>
+            <p class="text-[9px] text-gray-300 leading-relaxed mb-4 flex-grow">${r.desc}</p>
+            <button class="w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[9px] rounded uppercase tracking-wider border border-yellow-200 transition">
+                PILIH RELIK
+            </button>
+        `;
+
+        card.addEventListener('click', () => {
+            selectRelic(r);
+        });
+
+        container.appendChild(card);
+    });
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function selectRelic(relic) {
+    if (!player) return;
+    if (!player.relics.some(r => r.id === relic.id)) {
+        player.relics.push(relic);
+    }
+    
+    playSound('relic_select');
+    floatingTexts.push(new FloatingText(player.x, player.y - 45, `+ RELIC: ${relic.name}`, relic.color, 16));
+    triggerScreenShake(6);
+    for (let i = 0; i < 25; i++) {
+        particles.push(new Particle(player.x, player.y, relic.color));
+    }
+
+    updateRelicTrayUI();
+
+    const modal = document.getElementById('relic-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    isRelicModalOpen = false;
+}
+
+function updateRelicTrayUI() {
+    const tray = document.getElementById('relic-tray');
+    if (!tray || !player) return;
+    tray.innerHTML = '';
+    
+    player.relics.forEach(r => {
+        const badge = document.createElement('div');
+        badge.className = "w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/80 border-2 flex items-center justify-center text-sm shadow cursor-pointer transition hover:scale-110";
+        badge.style.borderColor = r.color;
+        badge.title = `${r.name}: ${r.desc}`;
+        badge.innerText = r.icon;
+        tray.appendChild(badge);
+    });
+}
+
 class FloatingText {
     constructor(x, y, text, color, size = 16) {
         this.x = x; this.y = y; this.text = text;
@@ -584,8 +991,9 @@ class CoinLoot {
     }
     update() {
         // Efek Magnet ke Player
+        let magnetDist = (player && player.relics && player.relics.some(r => r.id === 'midas_magnet')) ? 330 : 100;
         const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
-        if (distToPlayer < 100) {
+        if (distToPlayer < magnetDist) {
             this.magnetized = true;
         }
 
@@ -630,8 +1038,9 @@ class ItemLoot {
         this.magnetized = false;
     }
     update() {
+        let magnetDist = (player && player.relics && player.relics.some(r => r.id === 'midas_magnet')) ? 330 : 110;
         const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
-        if (distToPlayer < 110) {
+        if (distToPlayer < magnetDist) {
             this.magnetized = true;
         }
         if (this.magnetized) {
@@ -864,6 +1273,15 @@ class PlayerProjectile {
                 e.takeDamage(this.damage);
                 playSound('hit');
 
+                // Relic elemental effects
+                if (player.relics.some(r => r.id === 'ignite_core')) {
+                    e.burnTimer = Math.max(e.burnTimer, 180);
+                }
+                if (player.relics.some(r => r.id === 'frost_ring') && Math.random() < 0.4) {
+                    e.chillTimer = Math.max(e.chillTimer, 150);
+                    floatingTexts.push(new FloatingText(e.x, e.y - 22, "❄️ FROSTBITE!", "#38bdf8", 12));
+                }
+
                 // Knockback peluru
                 let res = e.isBoss ? 0.2 : (e.isElite ? 0.35 : 0.8);
                 let dirX = this.vx !== 0 ? Math.sign(this.vx) : 0;
@@ -1036,6 +1454,13 @@ class Player {
         this.dashTimer = 0;
         this.isDashing = false;
         this.dashDir = { x: 1, y: 0 };
+
+        // Roguelike Relics
+        this.relics = [];
+        this.orbitalAngle = 0;
+        this.aegisReady = true;
+        this.aegisCooldown = 0;
+        this.bloodstoneKills = 0;
     }
 
     update() {
@@ -1044,6 +1469,37 @@ class Player {
         if (this.streakTimer > 0) {
             this.streakTimer--;
             if (this.streakTimer === 0) this.killStreak = 0;
+        }
+
+        // Orbital Blade Amulet Relic
+        if (this.relics.some(r => r.id === 'orbital_blades')) {
+            this.orbitalAngle += 0.055;
+            const orbitalDist = 58;
+            const bladePositions = [
+                { x: this.x + Math.cos(this.orbitalAngle) * orbitalDist, y: this.y + Math.sin(this.orbitalAngle) * orbitalDist },
+                { x: this.x + Math.cos(this.orbitalAngle + Math.PI) * orbitalDist, y: this.y + Math.sin(this.orbitalAngle + Math.PI) * orbitalDist }
+            ];
+
+            bladePositions.forEach(bp => {
+                enemies.forEach(e => {
+                    if (e.hp > 0 && e.bossState !== 'die' && Math.hypot(e.x - bp.x, e.y - bp.y) < 24 + e.width/2) {
+                        e.takeDamage(4);
+                        if (Math.random() < 0.2) {
+                            particles.push(new Particle(bp.x, bp.y, '#c084fc'));
+                        }
+                    }
+                });
+            });
+        }
+
+        // Aegis of the Immortal Recharge
+        if (this.relics.some(r => r.id === 'aegis_shield') && !this.aegisReady) {
+            this.aegisCooldown--;
+            if (this.aegisCooldown <= 0) {
+                this.aegisReady = true;
+                floatingTexts.push(new FloatingText(this.x, this.y - 35, "🛡️ AEGIS READY!", "#fbbf24", 14));
+                playSound('parry');
+            }
         }
 
         // Dash Cooldown HUD
@@ -1076,6 +1532,10 @@ class Player {
 
             if (this.dashTimer % 2 === 0) {
                 ghostTrails.push(new GhostTrail(this.x, this.y, this.visualFacing));
+                // Zeus's Greaves Lightning Trail
+                if (this.relics.some(r => r.id === 'zeus_greaves')) {
+                    lightningZaps.push(new LightningZap(this.x, this.y));
+                }
             }
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
@@ -1133,11 +1593,17 @@ class Player {
             const l = loot[i];
             const dist = Math.hypot(this.x - l.x, this.y - l.y);
             if (dist < this.width + l.radius) {
-                if (l instanceof CoinLoot) {
-                    coins += l.value;
+                if (l instanceof RelicChest) {
+                    openRelicModal();
+                    loot.splice(i, 1);
+                    continue;
+                } else if (l instanceof CoinLoot) {
+                    let earned = l.value;
+                    if (this.relics.some(r => r.id === 'midas_magnet')) earned = Math.ceil(earned * 1.3);
+                    coins += earned;
                     coinText.innerText = coins;
                     playSound('coin');
-                    floatingTexts.push(new FloatingText(this.x, this.y - 20, `+${l.value} Coin`, "#ffd700", 12));
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, `+${earned} Coin`, "#ffd700", 12));
                 } else if (l.type === 'heart') {
                     let heal = 30;
                     this.hp = Math.min(this.maxHp, this.hp + heal);
@@ -1257,6 +1723,16 @@ class Player {
 
                 enemy.takeDamage(dmg);
                 playSound('hit');
+
+                // Relic elemental effects
+                if (this.relics.some(r => r.id === 'ignite_core')) {
+                    enemy.burnTimer = Math.max(enemy.burnTimer, 180);
+                }
+                if (this.relics.some(r => r.id === 'frost_ring') && Math.random() < 0.4) {
+                    enemy.chillTimer = Math.max(enemy.chillTimer, 150);
+                    floatingTexts.push(new FloatingText(enemy.x, enemy.y - 22, "❄️ FROSTBITE!", "#38bdf8", 12));
+                }
+
                 let res = enemy.isBoss ? 0.2 : (enemy.isElite ? 0.35 : 1.0);
                 enemy.x += knockX * res;
                 enemy.y += knockY * res;
@@ -1341,6 +1817,19 @@ class Player {
 
     takeDamage(amount) {
         if (this.invincibleTimer > 0) return; // Kebal selama iframe!
+
+        // Aegis of the Immortal Relic: block fatal/heavy hit every 35s
+        if (this.relics.some(r => r.id === 'aegis_shield') && this.aegisReady) {
+            this.aegisReady = false;
+            this.aegisCooldown = 2100; // 35 detik cooldown
+            this.invincibleTimer = 30; // Extra temporary iframe
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, "🛡️ BLOCKED BY AEGIS!", "#ffd700", 18));
+            playSound('parry');
+            triggerScreenShake(5);
+            for (let p = 0; p < 18; p++) particles.push(new Particle(this.x, this.y, '#ffd700'));
+            return;
+        }
+
         this.invincibleTimer = 22; // ~0.35 detik jeda aman
         
         let reduced = Math.max(2, amount - this.armor);
@@ -1449,6 +1938,74 @@ class Player {
 
             ctx.restore();
         }
+
+        // Efek Visual Relic: Orbital Blade Amulet
+        if (this.relics.some(r => r.id === 'orbital_blades')) {
+            const bladeDist = 58;
+            for (let b = 0; b < 2; b++) {
+                const bAngle = this.orbitalAngle + (b * Math.PI);
+                const bx = this.x + Math.cos(bAngle) * bladeDist;
+                const by = this.y + Math.sin(bAngle) * bladeDist;
+
+                ctx.save();
+                ctx.translate(bx, by);
+                ctx.rotate(bAngle + Math.PI / 2);
+
+                // Blade Outer Glow
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.moveTo(0, -16);
+                ctx.lineTo(6, 4);
+                ctx.lineTo(0, 14);
+                ctx.lineTo(-6, 4);
+                ctx.closePath();
+                ctx.fill();
+
+                // Blade Inner White Core
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(0, -11);
+                ctx.lineTo(3, 2);
+                ctx.lineTo(0, 8);
+                ctx.lineTo(-3, 2);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Efek Visual Relic: Aegis of the Immortal (Golden Dome Barrier)
+        if (this.relics.some(r => r.id === 'aegis_shield') && this.aegisReady) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            const pulse = Math.sin(Date.now() / 220) * 2.5;
+            const shieldRadius = 32 + pulse;
+
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.75)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, shieldRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner translucent golden glow
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.12)';
+            ctx.fill();
+
+            // Floating mini shield rune
+            ctx.fillStyle = '#ffe066';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🛡️', 0, -shieldRadius - 5);
+
+            ctx.restore();
+        }
     }
 }
 
@@ -1502,6 +2059,7 @@ function setBiome(key) {
     const biome = BIOMES[key];
     
     initDecorations();
+    initWeather();
 
     const banner = document.getElementById('biome-banner');
     const title = document.getElementById('biome-title');
@@ -1780,6 +2338,8 @@ class Enemy {
         this.isStaggered = false;
         this.staggerTimer = 0;
         this.isEnraged = false;
+        this.burnTimer = 0;
+        this.chillTimer = 0;
     }
 
     takePoiseDamage(amount) {
@@ -1875,6 +2435,23 @@ class Enemy {
             }
         }
 
+        // Relic Elemental Status Effects: Burn & Chill
+        if (this.burnTimer > 0) {
+            this.burnTimer--;
+            if (this.burnTimer % 30 === 0) {
+                this.takeDamage(4);
+                for (let p = 0; p < 2; p++) particles.push(new Particle(this.x + (Math.random() - 0.5) * 16, this.y + (Math.random() - 0.5) * 16, '#ff4400'));
+            }
+        }
+        if (this.chillTimer > 0) {
+            this.chillTimer--;
+            if (Math.random() < 0.12) {
+                particles.push(new Particle(this.x + (Math.random() - 0.5) * 16, this.y + (Math.random() - 0.5) * 16, '#38bdf8'));
+            }
+        }
+
+        const moveSpeed = this.speed * (this.chillTimer > 0 ? 0.5 : 1.0);
+
         // Jalan ke arah player
         const dx = player.x - this.x;
         const dy = player.y - this.y;
@@ -1883,11 +2460,11 @@ class Enemy {
         // Perilaku Mage
         if (this.type === 'mage') {
             if (dist > 200) {
-                this.x += (dx / dist) * this.speed;
-                this.y += (dy / dist) * this.speed;
+                this.x += (dx / dist) * moveSpeed;
+                this.y += (dy / dist) * moveSpeed;
             } else if (dist < 150) {
-                this.x -= (dx / dist) * this.speed * 0.5; // mundur pelan pelan
-                this.y -= (dy / dist) * this.speed * 0.5;
+                this.x -= (dx / dist) * moveSpeed * 0.5; // mundur pelan pelan
+                this.y -= (dy / dist) * moveSpeed * 0.5;
             }
             
             if (this.cooldown > 0) this.cooldown--;
@@ -1904,8 +2481,8 @@ class Enemy {
         if (this.type === 'charger') {
             if (this.chargeState === 'walk') {
                 if (dist > 5) {
-                    this.x += (dx / dist) * this.speed;
-                    this.y += (dy / dist) * this.speed;
+                    this.x += (dx / dist) * moveSpeed;
+                    this.y += (dy / dist) * moveSpeed;
                 }
                 if (dist < 220 && dist > 60 && Math.random() < 0.02) {
                     this.chargeState = 'windup';
@@ -1923,8 +2500,9 @@ class Enemy {
                 }
                 return;
             } else if (this.chargeState === 'dash') {
-                this.x += this.dashDir.x * 7.5;
-                this.y += this.dashDir.y * 7.5;
+                const dashMult = this.chillTimer > 0 ? 0.6 : 1.0;
+                this.x += this.dashDir.x * 7.5 * dashMult;
+                this.y += this.dashDir.y * 7.5 * dashMult;
                 if (Math.random() < 0.5) particles.push(new Particle(this.x, this.y, '#ff1493'));
                 
                 if (dist < (this.width/2 + player.width/2 + 15)) {
@@ -1940,8 +2518,8 @@ class Enemy {
             }
         } else {
             if (dist > 5) {
-                this.x += (dx / dist) * this.speed;
-                this.y += (dy / dist) * this.speed;
+                this.x += (dx / dist) * moveSpeed;
+                this.y += (dy / dist) * moveSpeed;
             }
         }
         
@@ -2014,7 +2592,22 @@ class Enemy {
             updateUI();
         }
 
+        // Vampiric Bloodstone Relic: heal +25 HP every 10 kills
+        if (player.relics.some(r => r.id === 'bloodstone')) {
+            player.bloodstoneKills++;
+            if (player.bloodstoneKills % 10 === 0) {
+                player.hp = Math.min(player.maxHp, player.hp + 25);
+                floatingTexts.push(new FloatingText(player.x, player.y - 45, "🩸 BLOODSTONE REAP! +25 HP", "#ef4444", 16));
+                playSound('heal');
+                for (let p = 0; p < 14; p++) particles.push(new Particle(player.x, player.y, '#ef4444'));
+                updateUI();
+            }
+        }
+
         if (this.isBoss) {
+            // Boss drops Golden Mystic Chest (Roguelike Relic Choice)
+            loot.push(new RelicChest(this.x, this.y));
+
             // Boss drop 25 koin tersebar + 2 Heart + 1 Sword + 1 Mythic Soul Orb (+350-500 XP)!
             for (let k = 0; k < 5; k++) {
                 let offX = (Math.random() - 0.5) * 60;
@@ -2025,7 +2618,7 @@ class Enemy {
             loot.push(new ItemLoot(this.x + 20, this.y, 'heart'));
             loot.push(new ItemLoot(this.x, this.y + 20, 'sword'));
             loot.push(new ItemLoot(this.x, this.y - 20, 'orb', Math.floor(350 + player.level * 45)));
-            floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! +25 COINS & MYTHIC ORB", "#ffd700", 26));
+            floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! MYSTIC CHEST UNLOCKED", "#ffd700", 26));
 
             // Switch BGM back to explore
             setBGMMode('explore');
@@ -2191,6 +2784,16 @@ class Enemy {
                 ctx.fillStyle = '#ffd700'; ctx.fillText("★ ELITE", this.x, this.y - 29);
             }
         }
+
+        // Status Effect Icons (Burn / Chill)
+        let statusIcons = "";
+        if (this.burnTimer > 0) statusIcons += "🔥";
+        if (this.chillTimer > 0) statusIcons += "❄️";
+        if (statusIcons) {
+            ctx.font = "10px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(statusIcons, this.x, this.isBoss ? this.y - 62 : this.y - (this.isElite ? 38 : 31));
+        }
     }
 }
 
@@ -2327,6 +2930,12 @@ function drawBackground() {
 function gameLoop(timestamp) {
     if (!isPlaying) return;
 
+    // Freeze game world updates while choosing a Relic!
+    if (isRelicModalOpen) {
+        animationId = requestAnimationFrame(gameLoop);
+        return;
+    }
+
     player.update();
     enemies.forEach(e => e.update());
     ghostTrails.forEach(gt => gt.update());
@@ -2336,6 +2945,8 @@ function gameLoop(timestamp) {
     enemyProjectiles.forEach(ep => ep.update());
     playerProjectiles.forEach(pp => pp.update());
     bossShockwaves.forEach(bs => bs.update());
+    lightningZaps.forEach(lz => lz.update());
+    weatherParticles.forEach(wp => wp.update());
 
     ghostTrails = ghostTrails.filter(gt => gt.life > 0);
     particles = particles.filter(p => p.life > 0);
@@ -2343,6 +2954,7 @@ function gameLoop(timestamp) {
     enemyProjectiles = enemyProjectiles.filter(ep => ep.life > 0);
     playerProjectiles = playerProjectiles.filter(pp => pp.life > 0);
     bossShockwaves = bossShockwaves.filter(bs => bs.life > 0);
+    lightningZaps = lightningZaps.filter(lz => lz.life > 0);
 
     // Update Epic Boss Top Bar HUD
     const bossHud = document.getElementById('boss-hud');
@@ -2386,6 +2998,12 @@ function gameLoop(timestamp) {
 
     drawBackground();
     
+    // Ambient Biome Weather Particles (Leaves, Fog, Embers, Astral Snow)
+    weatherParticles.forEach(wp => wp.draw(ctx));
+
+    // Zeus's Greaves Lightning Dash Trails
+    lightningZaps.forEach(lz => lz.draw(ctx));
+
     // Render Ghost Dash Trails di lantai
     ghostTrails.forEach(gt => gt.draw(ctx));
 
@@ -2408,9 +3026,11 @@ let bossShockwaves = [];
 
 function startGame() {
     player = new Player(canvas.width/2, canvas.height/2);
-    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = []; playerProjectiles = []; bossShockwaves = []; ghostTrails = [];
+    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = []; playerProjectiles = []; bossShockwaves = []; ghostTrails = []; lightningZaps = [];
     setBiome('forest');
     decorationsInitialized = true;
+    updateRelicTrayUI();
+    initWeather();
     coins = 0; coinText.innerText = coins;
     
     // Inisialisasi Audio (User Interaction) & Start BGM
