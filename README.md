@@ -55,11 +55,11 @@ Tidak memerlukan instalasi node_modules atau server rumit, game ini dapat langsu
 
 1. **Clone repository ini**:
    ```bash
-   git clone https://github.com/<username>/pixel-knight-rpg.git
+   git clone https://github.com/Azriel121212/blade-of-souls-rpg.git
    ```
 2. **Masuk ke folder proyek**:
    ```bash
-   cd pixel-knight-rpg
+   cd blade-of-souls-rpg
    ```
 3. **Buka game**:
    - Cukup klik dua kali file `index.html`, atau
