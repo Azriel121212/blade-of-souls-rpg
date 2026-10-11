@@ -10,24 +10,27 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
 
 ## 🎮 Fitur Utama
 
-- **⚔️ 4-Directional Combat & Parry Mechanic**:
-  - Serangan pedang berjarak dekat sesuai arah hadap karakter.
-  - **Mekanik Tangkis (Parry)**: Ayunan pedang bisa memantulkan bola sihir musuh kembali ke arah mereka dan memberikan damage balasan!
+- **⚔️ 4-Directional Combat, Sword Wave & Parry Mechanic**:
+  - Serangan tebasan pedang berjarak dekat sesuai arah hadap karakter.
+  - **🌊 Sword Wave (Proyektil Energi Sabit)**: Tiap ayunan pedang meluncurkan gelombang sabit energi yang menembus dan menghantam musuh dari jarak jauh (dapat ditingkatkan hingga Triple Wave 3 arah!).
+  - **🌪️ Jangkauan Tebasan (AoE)**: Radius dan lebar tebasan pedang dapat ditingkatkan secara visual dan hitbox-nya.
+  - **🛡️ Invulnerability Frames (i-Frames) & Iron Armor**: Pemain mendapatkan jeda kebal sesaat saat terkena hit agar tidak langsung mati instan saat dikerumuni, serta dapat membeli perlindungan Armor pengurang damage.
+  - **Mekanik Tangkis (Parry)**: Ayunan pedang bisa memantulkan bola sihir musuh kembali ke arah mereka dan memberikan damage balasan x3 lipat!
 - **💀 Variasi Musuh & Boss Battle**:
-  - **Melee Skeleton**: Mengejar dan menyerang pemain dari jarak dekat.
-  - **Mage Skeleton**: Menyerang dari jarak jauh menggunakan bola sihir terarah.
-  - **Epic Boss Monster**: Muncul setiap kelipatan level 5 dengan animasi sprite sheet lengkap (Walk, Attack, Hurt, dan Die sequence dengan sisa abu/ash residue).
+  - **Melee Skeleton & Bat**: Mengejar dan menyerang pemain.
+  - **Mage Skeleton**: Menyerang dari jarak jauh menggunakan bola sihir terarah (drop 2 koin).
+  - **Epic Boss Monster**: Muncul setiap kelipatan level 5 dengan animasi sprite sheet lengkap, drop 25 koin, guaranteed heart & sword!
 - **🌲 Dinamika Lingkungan (Environment)**:
   - Pepohonan, semak-semak, dan bebatuan tersebar acak di arena.
   - Efek transparansi otomatis saat karakter atau musuh berada di balik pepohonan agar tidak menutupi aksi pertempuran.
-- **🛒 Upgrade Shop & Ekonomi Koin**:
-  - Kumpulkan koin dan kristal XP dari musuh yang dikalahkan.
-  - Tingkatkan **Attack Damage**, **Max HP**, atau beli **Potion Penyembuh** di Shop.
+- **🏪 Blacksmith Shop & Ekonomi Koin**:
+  - 7 Pilihan Upgrade lengkap: Health Potion, Max HP Boost, Attack Damage, Sword Wave Proyektil, Blade Reach (AoE), Iron Armor (Def), dan Vampire Rune (Lifesteal HP per kill).
 - **📱 Dukungan Desktop & Mobile**:
   - Kontrol keyboard responsif di PC/Laptop.
   - Tombol virtual D-Pad dan Action Button yang otomatis aktif di layar smartphone / perangkat sentuh.
 - **✨ Visual & Efek Partikel**:
-  - Floating damage text (warna merah untuk damage player, kuning untuk damage musuh, ungu untuk pantulan parry).
+  - Tebasan glowing neon cyan & white core yang membesar sesuai level upgrade.
+  - Floating damage text (merah untuk damage player, kuning untuk damage musuh, hijau untuk heal/vampire, ungu untuk parry).
   - Partikel percikan darah, pecahan proyektil, dan transisi bar HP/XP yang halus.
 
 ---

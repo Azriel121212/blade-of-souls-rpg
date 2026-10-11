@@ -101,15 +101,88 @@
     </div>
 
     <!-- Shop Screen -->
-    <div id="shop-screen" class="absolute inset-0 bg-black/95 hidden flex-col items-center justify-center z-40 text-white pixel-font">
-        <h2 class="text-4xl mb-6 text-yellow-400 text-shadow-lg">SHOP</h2>
-        <div class="mb-8 text-xl">Coins: <span id="shop-coins-display" class="text-yellow-300">0</span></div>
-        <div class="flex flex-col gap-4">
-            <button id="buy-hp" class="px-6 py-3 bg-green-600 hover:bg-green-500 rounded border-2 border-green-800 transition transform hover:scale-105">Buy Potion (+50 HP) - 10 Coins</button>
-            <button id="buy-atk" class="px-6 py-3 bg-red-600 hover:bg-red-500 rounded border-2 border-red-800 transition transform hover:scale-105">Upgrade Sword (+5 ATK) - 25 Coins</button>
-            <button id="buy-maxhp" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded border-2 border-blue-800 transition transform hover:scale-105">Upgrade Max HP (+20) - 30 Coins</button>
+    <div id="shop-screen" class="absolute inset-0 bg-black/95 hidden flex-col items-center justify-center z-40 text-white pixel-font p-3 sm:p-6 overflow-y-auto">
+        <h2 class="text-2xl sm:text-4xl mb-2 text-yellow-400 text-shadow-lg tracking-wider text-center">🏪 BLACKSMITH SHOP</h2>
+        <div class="mb-3 text-xs sm:text-sm text-gray-300">
+            Coins: <span id="shop-coins-display" class="text-yellow-300 text-base sm:text-lg">0</span> 🪙
         </div>
-        <button id="close-shop" class="mt-8 px-6 py-2 bg-gray-600 hover:bg-gray-500 rounded border-2 border-gray-800">Close Shop (B)</button>
+        
+        <!-- Player Mini Status inside Shop -->
+        <div id="shop-stats-bar" class="mb-4 text-[9px] sm:text-[10px] text-gray-300 flex flex-wrap justify-center gap-2 bg-gray-900/90 p-2.5 rounded border border-gray-700 max-w-xl w-full">
+            <span>HP: <b id="shop-stat-hp" class="text-red-400">100/100</b></span> |
+            <span>ATK: <b id="shop-stat-atk" class="text-orange-400">15</b></span> |
+            <span>Wave: <b id="shop-stat-wave" class="text-cyan-400">Lvl 1</b></span> |
+            <span>Range: <b id="shop-stat-range" class="text-yellow-400">Lvl 0</b></span> |
+            <span>Armor: <b id="shop-stat-armor" class="text-blue-400">0</b></span> |
+            <span>Vamp: <b id="shop-stat-vamp" class="text-emerald-400">0</b></span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full max-w-xl text-left text-[10px] sm:text-xs">
+            <!-- Potion -->
+            <button id="buy-hp" class="p-2 sm:p-3 bg-green-700 hover:bg-green-600 rounded border-2 border-green-500 transition transform hover:scale-[1.02] flex items-center justify-between">
+                <div>
+                    <div class="text-white font-bold">🧪 Health Potion</div>
+                    <div class="text-[9px] text-green-200">Pulihkan +60 HP</div>
+                </div>
+                <div class="text-yellow-300 font-bold ml-2">10 🪙</div>
+            </button>
+
+            <!-- Max HP -->
+            <button id="buy-maxhp" class="p-2 sm:p-3 bg-blue-700 hover:bg-blue-600 rounded border-2 border-blue-500 transition transform hover:scale-[1.02] flex items-center justify-between">
+                <div>
+                    <div class="text-white font-bold">❤️ Boost Max HP</div>
+                    <div class="text-[9px] text-blue-200">+30 Max HP & Full Heal</div>
+                </div>
+                <div class="text-yellow-300 font-bold ml-2">30 🪙</div>
+            </button>
+
+            <!-- ATK Upgrade -->
+            <button id="buy-atk" class="p-2 sm:p-3 bg-red-700 hover:bg-red-600 rounded border-2 border-red-500 transition transform hover:scale-[1.02] flex items-center justify-between">
+                <div>
+                    <div class="text-white font-bold">⚔️ Upgrade Pedang</div>
+                    <div class="text-[9px] text-red-200">+5 Attack Damage</div>
+                </div>
+                <div class="text-yellow-300 font-bold ml-2">25 🪙</div>
+            </button>
+
+            <!-- Sword Wave (Projectile) -->
+            <button id="buy-wave" class="p-2 sm:p-3 bg-cyan-700 hover:bg-cyan-600 rounded border-2 border-cyan-500 transition transform hover:scale-[1.02] flex items-center justify-between">
+                <div>
+                    <div class="text-white font-bold">🌊 Sword Wave Proyektil</div>
+                    <div id="shop-desc-wave" class="text-[9px] text-cyan-200">Tingkatkan Gelombang Sabit</div>
+                </div>
+                <div id="shop-cost-wave" class="text-yellow-300 font-bold ml-2">35 🪙</div>
+            </button>
+
+            <!-- Sword Range / AoE -->
+            <button id="buy-range" class="p-2 sm:p-3 bg-amber-700 hover:bg-amber-600 rounded border-2 border-amber-500 transition transform hover:scale-[1.02] flex items-center justify-between">
+                <div>
+                    <div class="text-white font-bold">🌪️ Jangkauan Tebas (AoE)</div>
+                    <div id="shop-desc-range" class="text-[9px] text-amber-200">+20% Area Serangan</div>
+                </div>
+                <div id="shop-cost-range" class="text-yellow-300 font-bold ml-2">25 🪙</div>
+            </button>
+
+            <!-- Armor / Def -->
+            <button id="buy-armor" class="p-2 sm:p-3 bg-indigo-700 hover:bg-indigo-600 rounded border-2 border-indigo-500 transition transform hover:scale-[1.02] flex items-center justify-between">
+                <div>
+                    <div class="text-white font-bold">🛡️ Iron Armor (Def)</div>
+                    <div id="shop-desc-armor" class="text-[9px] text-indigo-200">-2 Damage Tiap Serangan</div>
+                </div>
+                <div id="shop-cost-armor" class="text-yellow-300 font-bold ml-2">25 🪙</div>
+            </button>
+
+            <!-- Lifesteal / Vampire -->
+            <button id="buy-vamp" class="p-2 sm:p-3 bg-purple-700 hover:bg-purple-600 rounded border-2 border-purple-500 transition transform hover:scale-[1.02] flex items-center justify-between sm:col-span-2">
+                <div>
+                    <div class="text-white font-bold">🩸 Vampire Rune</div>
+                    <div id="shop-desc-vamp" class="text-[9px] text-purple-200">+2 HP Tiap Monster Mati</div>
+                </div>
+                <div id="shop-cost-vamp" class="text-yellow-300 font-bold ml-2">35 🪙</div>
+            </button>
+        </div>
+        
+        <button id="close-shop" class="mt-4 px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded border-2 border-gray-500 text-xs transition">Close Shop (B)</button>
     </div>
 
 </div>
@@ -221,6 +294,13 @@ function playSound(type) {
         gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
         osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+    } else if (type === 'wave') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.12);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.12);
     }
 }
 
@@ -347,9 +427,10 @@ class EnemyProjectile {
         this.x += this.dx; this.y += this.dy; this.life--;
         
         // Cek tangkisan pedang
-        if (!this.isReflected && player.isAttacking) {
+        if (!this.isReflected && player && player.isAttacking) {
             const dist = Math.hypot(this.x - player.x, this.y - player.y);
-            if (dist < 60) { // Range pedang
+            const parryRange = 60 + (player.swordRangeLevel || 0) * 15;
+            if (dist < parryRange) {
                 this.isReflected = true;
                 this.dx = -this.dx * 1.5;
                 this.dy = -this.dy * 1.5;
@@ -388,6 +469,90 @@ class EnemyProjectile {
     }
 }
 
+class PlayerProjectile {
+    constructor(x, y, vx, vy, damage, size = 18, pierce = 2, angle = 0) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.damage = damage;
+        this.size = size;
+        this.pierce = pierce;
+        this.angle = angle;
+        this.life = 75; // Jangkauan terbang proyektil (~1.2 detik)
+        this.hitEnemies = new Set();
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+
+        // Jejak partikel energi
+        if (Math.random() < 0.35) {
+            particles.push(new Particle(this.x, this.y, '#38bdf8'));
+        }
+
+        // Cek tabrakan dengan musuh
+        for (let i = 0; i < enemies.length; i++) {
+            const e = enemies[i];
+            if (this.hitEnemies.has(e)) continue;
+
+            const dist = Math.hypot(this.x - e.x, this.y - e.y);
+            if (dist < this.size + (e.width / 2)) {
+                this.hitEnemies.add(e);
+                e.takeDamage(this.damage);
+                playSound('hit');
+
+                // Knockback peluru
+                let res = e.isBoss ? 0.2 : 0.8;
+                let dirX = this.vx !== 0 ? Math.sign(this.vx) : 0;
+                let dirY = this.vy !== 0 ? Math.sign(this.vy) : 0;
+                e.x += dirX * 12 * res;
+                e.y += dirY * 12 * res;
+
+                // Percikan efek hit proyektil
+                for (let p = 0; p < 4; p++) {
+                    particles.push(new Particle(e.x, e.y, '#00ffff'));
+                }
+
+                this.pierce--;
+                if (this.pierce <= 0) {
+                    this.life = 0;
+                    break;
+                }
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        // Efek glowing crescent wave
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 12;
+
+        // Sabit luar (cyan)
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size, -Math.PI / 2.8, Math.PI / 2.8);
+        ctx.stroke();
+
+        // Inti putih
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size - 2, -Math.PI / 3.5, Math.PI / 3.5);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
 class Shockwave {
     constructor(x, y) {
         this.x = x; this.y = y; this.radius = 10; this.maxRadius = 150;
@@ -422,6 +587,13 @@ class Player {
         this.maxHp = 100; this.hp = 100;
         this.level = 1; this.xp = 0; this.maxXp = 50;
         this.attackPower = 15;
+
+        // Upgradeable Perks
+        this.swordWaveLevel = 1; // 1 = Sabit Dasar, 2 = Mega Pierce Wave, 3 = Triple Spread Wave
+        this.swordRangeLevel = 0; // Jangkauan tebasan (0 - 4)
+        this.armor = 0; // Pengurang damage (0 - 10)
+        this.lifesteal = 0; // HP recovery per kill (0 - 6)
+        this.invincibleTimer = 0; // i-frame invulnerability
         
         // Combat State
         this.isAttacking = false;
@@ -434,6 +606,7 @@ class Player {
 
     update() {
         if (this.hp <= 0) return;
+        if (this.invincibleTimer > 0) this.invincibleTimer--;
 
         // Movement & Menentukan Arah Tebasan (Aim)
         let dx = 0; let dy = 0;
@@ -488,12 +661,12 @@ class Player {
                     coins += l.value;
                     coinText.innerText = coins;
                     playSound('coin');
-                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "+1 Coin", "#ffd700", 12));
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, `+${l.value} Coin`, "#ffd700", 12));
                 } else if (l.type === 'heart') {
-                    let heal = 25;
+                    let heal = 30;
                     this.hp = Math.min(this.maxHp, this.hp + heal);
                     playSound('coin');
-                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "+25 HP", "#00ff00", 12));
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, `+${heal} HP`, "#00ff00", 12));
                     updateUI();
                 } else if (l.type === 'sword') {
                     this.attackPower += 2;
@@ -507,30 +680,30 @@ class Player {
 
     attack() {
         this.isAttacking = true;
-        this.attackCooldown = 25; // Attack speed
+        this.attackCooldown = 22; // Kecepatan serang responsif
         
-        const hitRange = 70;
-        const hitWidth = 80; // Diperlebar agar musuh sejajar tetap kena
+        const hitRange = 75 + this.swordRangeLevel * 20;
+        const hitWidth = 85 + this.swordRangeLevel * 22;
         
         let hitbox = { x: 0, y: 0, w: 0, h: 0 };
         let knockX = 0, knockY = 0;
 
-        // Menyesuaikan posisi serangan berdasarkan 4 arah, area overlap ke badan player (-15)
+        // Menyesuaikan posisi serangan berdasarkan 4 arah
         if (this.aimDirection === 'right') {
             hitbox = { x: this.x - 15, y: this.y - hitWidth/2, w: hitRange + 15, h: hitWidth };
-            knockX = 20;
+            knockX = 22;
         } else if (this.aimDirection === 'left') {
             hitbox = { x: this.x - hitRange, y: this.y - hitWidth/2, w: hitRange + 15, h: hitWidth };
-            knockX = -20;
+            knockX = -22;
         } else if (this.aimDirection === 'up') {
             hitbox = { x: this.x - hitWidth/2, y: this.y - hitRange, w: hitWidth, h: hitRange + 15 };
-            knockY = -20;
+            knockY = -22;
         } else if (this.aimDirection === 'down') {
             hitbox = { x: this.x - hitWidth/2, y: this.y - 15, w: hitWidth, h: hitRange + 15 };
-            knockY = 20;
+            knockY = 22;
         }
 
-        // Damage ke musuh yang kena Hitbox (>= dan <= supaya akurat di ujung)
+        // Damage ke musuh yang kena Hitbox
         enemies.forEach(enemy => {
             if (enemy.x >= hitbox.x && enemy.x <= hitbox.x + hitbox.w &&
                 enemy.y >= hitbox.y && enemy.y <= hitbox.y + hitbox.h) {
@@ -538,14 +711,52 @@ class Player {
                 let dmg = this.attackPower + Math.floor(Math.random() * 5);
                 enemy.takeDamage(dmg);
                 playSound('hit');
-                // Efek kepukul (Knockback), lebih kecil untuk boss
                 let res = enemy.isBoss ? 0.2 : 1.0;
                 enemy.x += knockX * res;
                 enemy.y += knockY * res;
             }
         });
 
+        // Luncurkan proyektil tebasan (Sword Wave)
+        if (this.swordWaveLevel > 0) {
+            this.shootSwordWave();
+        }
+
         setTimeout(() => { this.isAttacking = false; }, 150);
+    }
+
+    shootSwordWave() {
+        let baseAngle = 0;
+        let startX = this.x;
+        let startY = this.y;
+        
+        if (this.aimDirection === 'right') { baseAngle = 0; startX += 20; }
+        else if (this.aimDirection === 'down') { baseAngle = Math.PI / 2; startY += 20; }
+        else if (this.aimDirection === 'left') { baseAngle = Math.PI; startX -= 20; }
+        else if (this.aimDirection === 'up') { baseAngle = -Math.PI / 2; startY -= 20; }
+
+        playSound('wave');
+        const speed = 8.5;
+
+        if (this.swordWaveLevel === 1) {
+            let vx = Math.cos(baseAngle) * speed;
+            let vy = Math.sin(baseAngle) * speed;
+            let dmg = Math.max(10, Math.floor(this.attackPower * 0.85));
+            playerProjectiles.push(new PlayerProjectile(startX, startY, vx, vy, dmg, 18, 2, baseAngle));
+        } else if (this.swordWaveLevel === 2) {
+            let vx = Math.cos(baseAngle) * (speed + 1);
+            let vy = Math.sin(baseAngle) * (speed + 1);
+            let dmg = Math.max(15, Math.floor(this.attackPower * 1.15));
+            playerProjectiles.push(new PlayerProjectile(startX, startY, vx, vy, dmg, 28, 4, baseAngle));
+        } else if (this.swordWaveLevel >= 3) {
+            const angles = [baseAngle, baseAngle + 0.35, baseAngle - 0.35];
+            angles.forEach(ang => {
+                let vx = Math.cos(ang) * (speed + 0.5);
+                let vy = Math.sin(ang) * (speed + 0.5);
+                let dmg = Math.max(12, Math.floor(this.attackPower * 1.0));
+                playerProjectiles.push(new PlayerProjectile(startX, startY, vx, vy, dmg, 22, 3, ang));
+            });
+        }
     }
 
     superSkill() {
@@ -571,8 +782,12 @@ class Player {
     }
 
     takeDamage(amount) {
-        this.hp -= amount;
-        floatingTexts.push(new FloatingText(this.x, this.y - this.height, `-${amount}`, "#ff0000"));
+        if (this.invincibleTimer > 0) return; // Kebal selama iframe!
+        this.invincibleTimer = 22; // ~0.35 detik jeda aman
+        
+        let reduced = Math.max(2, amount - this.armor);
+        this.hp -= reduced;
+        floatingTexts.push(new FloatingText(this.x, this.y - this.height, `-${reduced}`, "#ff3333", 16));
         updateUI();
         if (this.hp <= 0) gameOver();
     }
@@ -587,8 +802,8 @@ class Player {
     levelUp() {
         this.level++;
         this.xp -= this.maxXp;
-        this.maxXp = Math.floor(this.maxXp * 1.5);
-        this.maxHp += 20; this.hp = this.maxHp;
+        this.maxXp = Math.floor(this.maxXp * 1.4);
+        this.maxHp += 25; this.hp = this.maxHp; // Full heal bonus!
         this.attackPower += 5;
         
         playSound('level');
@@ -599,6 +814,12 @@ class Player {
 
     draw(ctx) {
         ctx.save();
+        
+        // Efek kedip saat kebal (i-frame)
+        if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / 3) % 2 === 0) {
+            ctx.globalAlpha = 0.4;
+        }
+
         ctx.translate(this.x, this.y);
         
         // Membalik gambar kalau jalan ke kiri
@@ -637,17 +858,34 @@ class Player {
         if (this.isAttacking) {
             ctx.save();
             ctx.translate(this.x, this.y);
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 5;
+            
+            const slashRadius = 38 + this.swordRangeLevel * 10;
+            const offset = 20 + this.swordRangeLevel * 5;
+
+            // Outer cyan glow
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 6;
             ctx.beginPath();
             
-            // Ayunan pedang menyesuaikan aimDirection
-            if (this.aimDirection === 'right') ctx.arc(20, 0, 35, -Math.PI/3, Math.PI/3);
-            else if (this.aimDirection === 'left') ctx.arc(-20, 0, 35, Math.PI - Math.PI/3, Math.PI + Math.PI/3);
-            else if (this.aimDirection === 'up') ctx.arc(0, -20, 35, -Math.PI/2 - Math.PI/3, -Math.PI/2 + Math.PI/3);
-            else if (this.aimDirection === 'down') ctx.arc(0, 20, 35, Math.PI/2 - Math.PI/3, Math.PI/2 + Math.PI/3);
-            
+            if (this.aimDirection === 'right') ctx.arc(offset, 0, slashRadius, -Math.PI/3, Math.PI/3);
+            else if (this.aimDirection === 'left') ctx.arc(-offset, 0, slashRadius, Math.PI - Math.PI/3, Math.PI + Math.PI/3);
+            else if (this.aimDirection === 'up') ctx.arc(0, -offset, slashRadius, -Math.PI/2 - Math.PI/3, -Math.PI/2 + Math.PI/3);
+            else if (this.aimDirection === 'down') ctx.arc(0, offset, slashRadius, Math.PI/2 - Math.PI/3, Math.PI/2 + Math.PI/3);
             ctx.stroke();
+
+            // Inner crisp white core
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            if (this.aimDirection === 'right') ctx.arc(offset, 0, slashRadius, -Math.PI/3.5, Math.PI/3.5);
+            else if (this.aimDirection === 'left') ctx.arc(-offset, 0, slashRadius, Math.PI - Math.PI/3.5, Math.PI + Math.PI/3.5);
+            else if (this.aimDirection === 'up') ctx.arc(0, -offset, slashRadius, -Math.PI/2 - Math.PI/3.5, -Math.PI/2 + Math.PI/3.5);
+            else if (this.aimDirection === 'down') ctx.arc(0, offset, slashRadius, Math.PI/2 - Math.PI/3.5, Math.PI/2 + Math.PI/3.5);
+            ctx.stroke();
+
             ctx.restore();
         }
     }
@@ -849,15 +1087,35 @@ class Enemy {
         player.gainXp(this.xp);
         for(let i=0; i<15; i++) particles.push(new Particle(this.x, this.y, this.color));
         
-        // 100% Drop Koin saat monster mati
-        loot.push(new CoinLoot(this.x, this.y, 1));
-        
-        // 20% Chance drop item
-        let rand = Math.random();
-        if (rand < 0.10) {
-            loot.push(new ItemLoot(this.x + 10, this.y, 'heart'));
-        } else if (rand < 0.15) {
-            loot.push(new ItemLoot(this.x - 10, this.y, 'sword'));
+        // Efek Vampire / Lifesteal saat membunuh musuh
+        if (player.lifesteal > 0) {
+            player.hp = Math.min(player.maxHp, player.hp + player.lifesteal);
+            floatingTexts.push(new FloatingText(player.x, player.y - 25, `+${player.lifesteal} HP`, "#22c55e", 12));
+            updateUI();
+        }
+
+        if (this.isBoss) {
+            // Boss drop 25 koin tersebar + 2 Heart + 1 Sword!
+            for (let k = 0; k < 5; k++) {
+                let offX = (Math.random() - 0.5) * 60;
+                let offY = (Math.random() - 0.5) * 60;
+                loot.push(new CoinLoot(this.x + offX, this.y + offY, 5));
+            }
+            loot.push(new ItemLoot(this.x - 20, this.y, 'heart'));
+            loot.push(new ItemLoot(this.x + 20, this.y, 'heart'));
+            loot.push(new ItemLoot(this.x, this.y + 20, 'sword'));
+            floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! +25 COINS", "#ffd700", 28));
+        } else {
+            // Normal monster drops
+            let coinVal = this.type === 'mage' ? 2 : 1;
+            loot.push(new CoinLoot(this.x, this.y, coinVal));
+            
+            let rand = Math.random();
+            if (rand < 0.15) {
+                loot.push(new ItemLoot(this.x + 10, this.y, 'heart'));
+            } else if (rand < 0.25) {
+                loot.push(new ItemLoot(this.x - 10, this.y, 'sword'));
+            }
         }
         
         const index = enemies.indexOf(this);
@@ -954,7 +1212,7 @@ function spawnEnemy() {
             boss.width = 60; boss.height = 60; // hitbox besar
             enemies.push(boss);
             floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "BOSS BATTLE!", "#ff0000", 40));
-        } else if (enemies.length < 5 + player.level * 2 && !enemies.some(e => e.isBoss)) {
+        } else if (enemies.length < Math.min(18, 5 + Math.floor(player.level * 0.9)) && !enemies.some(e => e.isBoss)) {
             const types = ['slime', 'slime', 'skeleton', 'bat', 'mage'];
             const type = types[Math.floor(Math.random() * types.length)];
             
@@ -971,8 +1229,8 @@ function spawnEnemy() {
         }
     }
     
-    // Tetap jalanin timer biarpun lagi pause/shop, supaya loopnya gak putus
-    setTimeout(spawnEnemy, 1500 - Math.min(1000, player.level * 50));
+    // Timer interval spawn musuh yang seimbang
+    setTimeout(spawnEnemy, Math.max(700, 1500 - player.level * 40));
 }
 
 function updateUI() {
@@ -1005,16 +1263,18 @@ function gameLoop(timestamp) {
     floatingTexts.forEach(f => f.update());
     loot.forEach(l => l.update());
     enemyProjectiles.forEach(ep => ep.update());
+    playerProjectiles.forEach(pp => pp.update());
 
     particles = particles.filter(p => p.life > 0);
     floatingTexts = floatingTexts.filter(f => f.life > 0);
     enemyProjectiles = enemyProjectiles.filter(ep => ep.life > 0);
+    playerProjectiles = playerProjectiles.filter(pp => pp.life > 0);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBackground();
     
     // Sortir urutan gambar dari atas ke bawah Y (Efek 3D / Tumpuk)
-    let renderList = [player, ...enemies, ...loot, ...enemyProjectiles, ...decorations];
+    let renderList = [player, ...enemies, ...loot, ...enemyProjectiles, ...playerProjectiles, ...decorations];
     renderList.sort((a, b) => a.y - b.y);
     renderList.forEach(entity => entity.draw(ctx));
     
@@ -1025,10 +1285,11 @@ function gameLoop(timestamp) {
 }
 
 let enemyProjectiles = [];
+let playerProjectiles = [];
 
 function startGame() {
     player = new Player(canvas.width/2, canvas.height/2);
-    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = [];
+    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = []; playerProjectiles = [];
     initDecorations();
     decorationsInitialized = true;
     coins = 0; coinText.innerText = coins;
@@ -1080,13 +1341,80 @@ window.addEventListener('keyup', (e) => {
 });
 
 // Shop Logic
+function updateShopUI() {
+    if (!player) return;
+    const shopCoinsDisplay = document.getElementById('shop-coins-display');
+    if (shopCoinsDisplay) shopCoinsDisplay.innerText = coins;
+    
+    // Update Mini Status
+    const elHp = document.getElementById('shop-stat-hp');
+    const elAtk = document.getElementById('shop-stat-atk');
+    const elWave = document.getElementById('shop-stat-wave');
+    const elRange = document.getElementById('shop-stat-range');
+    const elArmor = document.getElementById('shop-stat-armor');
+    const elVamp = document.getElementById('shop-stat-vamp');
+
+    if (elHp) elHp.innerText = `${Math.floor(player.hp)}/${player.maxHp}`;
+    if (elAtk) elAtk.innerText = player.attackPower;
+    if (elWave) elWave.innerText = player.swordWaveLevel >= 3 ? 'Lvl 3 (MAX)' : `Lvl ${player.swordWaveLevel}`;
+    if (elRange) elRange.innerText = player.swordRangeLevel >= 4 ? 'Lvl 4 (MAX)' : `Lvl ${player.swordRangeLevel}`;
+    if (elArmor) elArmor.innerText = `${player.armor} (${player.armor >= 10 ? 'MAX' : 'Lvl ' + (player.armor/2)})`;
+    if (elVamp) elVamp.innerText = `+${player.lifesteal} HP`;
+
+    // Update Wave Button
+    const descWave = document.getElementById('shop-desc-wave');
+    const costWave = document.getElementById('shop-cost-wave');
+    if (player.swordWaveLevel === 1) {
+        if (descWave) descWave.innerText = 'Tingkatkan ke Sabit Besar (Pierce 4)';
+        if (costWave) costWave.innerText = '35 🪙';
+    } else if (player.swordWaveLevel === 2) {
+        if (descWave) descWave.innerText = 'Tingkatkan ke Triple Wave (3 Arah)';
+        if (costWave) costWave.innerText = '50 🪙';
+    } else {
+        if (descWave) descWave.innerText = 'Triple Wave Active (MAX)';
+        if (costWave) costWave.innerText = 'MAX';
+    }
+
+    // Update Range Button
+    const descRange = document.getElementById('shop-desc-range');
+    const costRange = document.getElementById('shop-cost-range');
+    if (player.swordRangeLevel >= 4) {
+        if (descRange) descRange.innerText = 'Jangkauan Tebasan Maksimal (MAX)';
+        if (costRange) costRange.innerText = 'MAX';
+    } else {
+        if (descRange) descRange.innerText = `+20% Area Serang (Lvl ${player.swordRangeLevel}/4)`;
+        if (costRange) costRange.innerText = '25 🪙';
+    }
+
+    // Update Armor Button
+    const descArmor = document.getElementById('shop-desc-armor');
+    const costArmor = document.getElementById('shop-cost-armor');
+    if (player.armor >= 10) {
+        if (descArmor) descArmor.innerText = 'Armor Maksimal (MAX)';
+        if (costArmor) costArmor.innerText = 'MAX';
+    } else {
+        if (descArmor) descArmor.innerText = `-2 Damage Diterima (Lvl ${player.armor/2}/5)`;
+        if (costArmor) costArmor.innerText = '25 🪙';
+    }
+
+    // Update Vamp Button
+    const descVamp = document.getElementById('shop-desc-vamp');
+    const costVamp = document.getElementById('shop-cost-vamp');
+    if (player.lifesteal >= 6) {
+        if (descVamp) descVamp.innerText = 'Vampire Maksimal (MAX)';
+        if (costVamp) costVamp.innerText = 'MAX';
+    } else {
+        if (descVamp) descVamp.innerText = `+2 HP Tiap Musuh Mati (Lvl ${player.lifesteal/2}/3)`;
+        if (costVamp) costVamp.innerText = '35 🪙';
+    }
+}
+
 function openShop() {
     if (!isPlaying) return;
     const shopScreen = document.getElementById('shop-screen');
-    const shopCoinsDisplay = document.getElementById('shop-coins-display');
     shopScreen.classList.remove('hidden');
     shopScreen.classList.add('flex');
-    shopCoinsDisplay.innerText = coins;
+    updateShopUI();
     isPlaying = false; // Pause game while in shop
 }
 
@@ -1104,10 +1432,23 @@ document.getElementById('close-shop').addEventListener('click', closeShop);
 document.getElementById('buy-hp').addEventListener('click', () => {
     if (coins >= 10 && player.hp < player.maxHp) {
         coins -= 10; 
-        player.hp = Math.min(player.maxHp, player.hp + 50);
-        document.getElementById('shop-coins-display').innerText = coins; 
+        player.hp = Math.min(player.maxHp, player.hp + 60);
         coinText.innerText = coins; 
+        playSound('coin');
         updateUI();
+        updateShopUI();
+    }
+});
+
+document.getElementById('buy-maxhp').addEventListener('click', () => {
+    if (coins >= 30) {
+        coins -= 30; 
+        player.maxHp += 30; 
+        player.hp = player.maxHp; // Full heal bonus!
+        coinText.innerText = coins; 
+        playSound('coin');
+        updateUI();
+        updateShopUI();
     }
 });
 
@@ -1115,19 +1456,50 @@ document.getElementById('buy-atk').addEventListener('click', () => {
     if (coins >= 25) {
         coins -= 25; 
         player.attackPower += 5;
-        document.getElementById('shop-coins-display').innerText = coins; 
-        coinText.innerText = coins;
+        coinText.innerText = coins; 
+        playSound('coin');
+        updateShopUI();
     }
 });
 
-document.getElementById('buy-maxhp').addEventListener('click', () => {
-    if (coins >= 30) {
-        coins -= 30; 
-        player.maxHp += 20; 
-        player.hp += 20;
-        document.getElementById('shop-coins-display').innerText = coins; 
-        coinText.innerText = coins; 
-        updateUI();
+document.getElementById('buy-wave').addEventListener('click', () => {
+    let cost = player.swordWaveLevel === 1 ? 35 : (player.swordWaveLevel === 2 ? 50 : 9999);
+    if (player.swordWaveLevel < 3 && coins >= cost) {
+        coins -= cost;
+        player.swordWaveLevel++;
+        coinText.innerText = coins;
+        playSound('coin');
+        updateShopUI();
+    }
+});
+
+document.getElementById('buy-range').addEventListener('click', () => {
+    if (player.swordRangeLevel < 4 && coins >= 25) {
+        coins -= 25;
+        player.swordRangeLevel++;
+        coinText.innerText = coins;
+        playSound('coin');
+        updateShopUI();
+    }
+});
+
+document.getElementById('buy-armor').addEventListener('click', () => {
+    if (player.armor < 10 && coins >= 25) {
+        coins -= 25;
+        player.armor += 2;
+        coinText.innerText = coins;
+        playSound('coin');
+        updateShopUI();
+    }
+});
+
+document.getElementById('buy-vamp').addEventListener('click', () => {
+    if (player.lifesteal < 6 && coins >= 35) {
+        coins -= 35;
+        player.lifesteal += 2;
+        coinText.innerText = coins;
+        playSound('coin');
+        updateShopUI();
     }
 });
 
