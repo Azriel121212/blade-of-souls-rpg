@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Knight Action RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Khusus untuk mematikan seleksi teks agar nyaman dimainkan di HP */
+        body { touch-action: none; user-select: none; -webkit-user-select: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        .pixel-font { font-family: 'Press Start 2P', cursive; }
+        .bar-transition { transition: width 0.2s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-900 h-screen w-screen overflow-hidden flex items-center justify-center">
+
+<div id="game-container" class="relative w-full max-w-4xl h-full max-h-[800px] bg-black shadow-2xl overflow-hidden sm:rounded-xl sm:border-4 border-gray-700">
+    
+    <!-- UI Overlay: Status Player -->
+    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-10 pointer-events-none">
+        <div class="flex flex-col gap-2 w-1/2 max-w-xs">
+            <!-- HP Bar -->
+            <div class="flex items-center gap-2">
+                <span class="text-red-500 font-bold pixel-font text-[10px]">HP</span>
+                <div class="w-full h-4 bg-gray-800 rounded border-2 border-gray-600 relative overflow-hidden">
+                    <div id="hp-bar" class="h-full bg-red-500 bar-transition w-full"></div>
+                </div>
+                <span id="hp-text" class="text-white pixel-font text-[8px]">100/100</span>
+            </div>
+            <!-- XP Bar -->
+            <div class="flex items-center gap-2">
+                <span class="text-blue-400 font-bold pixel-font text-[10px]">XP</span>
+                <div class="w-full h-3 bg-gray-800 rounded border-2 border-gray-600 relative overflow-hidden">
+                    <div id="xp-bar" class="h-full bg-blue-500 bar-transition w-0"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats Kanan: Level & Koin -->
+        <div class="flex flex-col items-end gap-2 text-white pixel-font text-xs text-shadow pointer-events-auto">
+            <button id="shop-btn-ui" class="bg-purple-700/80 hover:bg-purple-600 px-3 py-1 rounded border-2 border-purple-500 animate-pulse cursor-pointer">
+                🛒 SHOP (B)
+            </button>
+            <div class="bg-gray-800/80 px-3 py-1 rounded border-2 border-gray-600">
+                LVL <span id="level-text" class="text-yellow-400">1</span>
+            </div>
+            <div class="bg-gray-800/80 px-3 py-1 rounded border-2 border-gray-600 flex items-center gap-1">
+                🪙 <span id="coin-text" class="text-yellow-400">0</span>
+            </div>
+        </div>
+        
+        <!-- Skill Cooldown UI -->
+        <div class="absolute top-20 left-4 bg-gray-900/80 p-2 rounded pixel-font text-white border-2 border-purple-500 w-32 shadow pointer-events-none">
+            <div class="text-[10px] mb-1 text-center">SKILL [F]</div>
+            <div class="w-full h-3 bg-gray-800 rounded overflow-hidden border border-gray-600 mb-1">
+                <div id="skill-bar" class="h-full bg-purple-500 transition-all duration-200" style="width: 100%"></div>
+            </div>
+            <div id="skill-text" class="text-center text-[10px] text-purple-300">READY!</div>
+        </div>
+    </div>
+
+    <!-- Teks Level Up -->
+    <div id="level-up-msg" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-yellow-300 pixel-font text-2xl z-20 hidden text-center drop-shadow-[0_5px_5px_rgba(0,0,0,1)]">
+        LEVEL UP!
+    </div>
+
+    <!-- Canvas Utama -->
+    <canvas id="gameCanvas" class="block w-full h-full"></canvas>
+
+    <!-- Kontrol Sentuh (Mobile) -->
+    <div id="mobile-controls" class="absolute bottom-4 left-0 w-full px-6 flex justify-between items-end z-10 sm:hidden">
+        <!-- D-Pad Kiri -->
+        <div class="grid grid-cols-3 gap-2 w-32 h-32">
+            <div></div>
+            <button id="btn-up" class="bg-gray-700/50 rounded-full active:bg-gray-500 border border-gray-500 flex items-center justify-center text-white pb-1">▲</button>
+            <div></div>
+            <button id="btn-left" class="bg-gray-700/50 rounded-full active:bg-gray-500 border border-gray-500 flex items-center justify-center text-white pb-1">◀</button>
+            <div class="bg-gray-800/30 rounded-full"></div>
+            <button id="btn-right" class="bg-gray-700/50 rounded-full active:bg-gray-500 border border-gray-500 flex items-center justify-center text-white pb-1">▶</button>
+            <div></div>
+            <button id="btn-down" class="bg-gray-700/50 rounded-full active:bg-gray-500 border border-gray-500 flex items-center justify-center text-white pb-1">▼</button>
+            <div></div>
+        </div>
+        
+        <!-- Tombol Aksi Kanan -->
+        <button id="btn-attack" class="w-16 h-16 bg-red-600/70 rounded-full active:bg-red-400 border-2 border-red-800 flex items-center justify-center text-white font-bold pixel-font text-[10px] mb-2 mr-2">
+            ATK
+        </button>
+    </div>
+
+    <!-- Layar Start / Game Over -->
+    <div id="menu-screen" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30">
+        <h1 id="menu-title" class="text-4xl md:text-5xl text-white pixel-font mb-4 text-center text-shadow-lg leading-relaxed text-transparent bg-clip-text bg-gradient-to-r from-gray-200 to-gray-500">PIXEL KNIGHT</h1>
+        <p id="menu-desc" class="text-gray-400 mb-8 pixel-font text-[10px] md:text-xs text-center max-w-sm leading-loose">
+            WASD / Arrow Keys to Move<br><br>SPACE to Attack 4 Directions
+        </p>
+        <button id="start-btn" class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white pixel-font text-sm rounded border-4 border-red-800 transition transform hover:scale-105 active:scale-95">
+            START GAME
+        </button>
+    </div>
+
+    <!-- Shop Screen -->
+    <div id="shop-screen" class="absolute inset-0 bg-black/95 hidden flex-col items-center justify-center z-40 text-white pixel-font">
+        <h2 class="text-4xl mb-6 text-yellow-400 text-shadow-lg">SHOP</h2>
+        <div class="mb-8 text-xl">Coins: <span id="shop-coins-display" class="text-yellow-300">0</span></div>
+        <div class="flex flex-col gap-4">
+            <button id="buy-hp" class="px-6 py-3 bg-green-600 hover:bg-green-500 rounded border-2 border-green-800 transition transform hover:scale-105">Buy Potion (+50 HP) - 10 Coins</button>
+            <button id="buy-atk" class="px-6 py-3 bg-red-600 hover:bg-red-500 rounded border-2 border-red-800 transition transform hover:scale-105">Upgrade Sword (+5 ATK) - 25 Coins</button>
+            <button id="buy-maxhp" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded border-2 border-blue-800 transition transform hover:scale-105">Upgrade Max HP (+20) - 30 Coins</button>
+        </div>
+        <button id="close-shop" class="mt-8 px-6 py-2 bg-gray-600 hover:bg-gray-500 rounded border-2 border-gray-800">Close Shop (B)</button>
+    </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// UI Elements
+const hpBar = document.getElementById('hp-bar');
+const hpText = document.getElementById('hp-text');
+const xpBar = document.getElementById('xp-bar');
+const levelText = document.getElementById('level-text');
+const coinText = document.getElementById('coin-text');
+const levelUpMsg = document.getElementById('level-up-msg');
+const menuScreen = document.getElementById('menu-screen');
+const menuTitle = document.getElementById('menu-title');
+const startBtn = document.getElementById('start-btn');
+const mobileControls = document.getElementById('mobile-controls');
+
+// Game State
+let isPlaying = false;
+let animationId;
+let keys = { up: false, down: false, left: false, right: false, attack: false };
+let coins = 0;
+
+// Collections
+let enemies = [];
+let particles = [];
+let floatingTexts = [];
+let loot = [];
+let bossSpawnedForLevel = 0;
+let decorations = [];
+
+// --- ASSETS LOAD (Sesuai nama file dari user) ---
+const imgPlayer = new Image();
+imgPlayer.src = 'player.png';
+
+const imgEntities = new Image();
+imgEntities.src = 'entities.png';
+
+const imgBoss = new Image();
+imgBoss.src = 'boss.png';
+
+// Fungsi Helper untuk memotong gambar berdasarkan persentase (Biar responsif di ukuran gambar apapun)
+function drawSpriteProportional(ctx, img, pX, pY, pW, pH, dx, dy, dw, dh) {
+    if (!img.complete || img.naturalWidth === 0) return false;
+    let sx = img.naturalWidth * pX;
+    let sy = img.naturalHeight * pY;
+    let sw = img.naturalWidth * pW;
+    let sh = img.naturalHeight * pH;
+    
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    
+    return true;
+}
+
+let decorationsInitialized = false;
+
+// Resize Canvas
+function resizeCanvas() {
+    const container = document.getElementById('game-container');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    if (window.innerWidth <= 640) mobileControls.classList.remove('hidden');
+    
+    if (decorationsInitialized) {
+        initDecorations();
+    }
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Web Audio API SFX
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    if (type === 'hit') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'coin') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'magic') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    } else if (type === 'level') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+    }
+}
+
+class FloatingText {
+    constructor(x, y, text, color, size = 16) {
+        this.x = x; this.y = y; this.text = text;
+        this.color = color; this.life = 1.0;
+        this.size = size; this.velocity = -1;
+    }
+    update() { this.y += this.velocity; this.life -= 0.02; }
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.font = `bold ${this.size}px 'Press Start 2P', monospace`;
+        ctx.strokeStyle = 'black'; ctx.lineWidth = 2;
+        ctx.strokeText(this.text, this.x, this.y);
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+    }
+}
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 3 + 1;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.life = 1.0; this.size = Math.random() * 4 + 2;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy; this.life -= 0.05;
+    }
+    draw(ctx) {
+        ctx.save(); ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.restore();
+    }
+}
+
+class CoinLoot {
+    constructor(x, y, value = 1) {
+        this.x = x; this.y = y; this.value = value;
+        this.radius = 12; this.vy = -4; 
+        this.vx = (Math.random() - 0.5) * 4;
+        this.bounce = 2;
+        this.magnetized = false; // Magnet effect
+    }
+    update() {
+        // Efek Magnet ke Player
+        const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+        if (distToPlayer < 100) {
+            this.magnetized = true;
+        }
+
+        if (this.magnetized) {
+            // Bergerak mendekati player otomatis
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            this.x += Math.cos(angle) * 8; // Kecepatan magnet
+            this.y += Math.sin(angle) * 8;
+        } else if (this.bounce > 0) {
+            // Animasi lompat saat jatuh
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.3; // gravity
+            if (this.vy > 3) {
+                this.vy = -2.5; this.bounce--; this.vx *= 0.5;
+            }
+        }
+    }
+    draw(ctx) {
+        // Animasi koin memutar
+        const frameIdx = Math.floor(Date.now() / 150) % 4;
+        
+        // Ambil Koin dari gambar Entities baris koin (sekitar Y: 48%, X: 0-35%)
+        let drawn = drawSpriteProportional(ctx, imgEntities, 
+            0 + (frameIdx * 0.0875), 0.48, 0.0875, 0.14, // Source proportions
+            this.x - 12, this.y - 12, 24, 24             // Destination pixels
+        );
+
+        if (!drawn) {
+            // Fallback Emoji jika gambar gagal dimuat
+            ctx.font = "16px Arial"; ctx.fillText("🪙", this.x - 8, this.y + 8);
+        }
+    }
+}
+
+class ItemLoot {
+    constructor(x, y, type) {
+        this.x = x; this.y = y; this.type = type;
+        this.radius = 12; this.vy = -4; 
+        this.vx = (Math.random() - 0.5) * 4;
+        this.bounce = 2;
+    }
+    update() {
+        if (this.bounce > 0) {
+            this.x += this.vx; this.y += this.vy; this.vy += 0.3;
+            if (this.vy > 3) { this.vy = -2.5; this.bounce--; this.vx *= 0.5; }
+        }
+    }
+    draw(ctx) {
+        // Animasi floating sedikit
+        const floatY = Math.sin(Date.now() / 200) * 4;
+        
+        ctx.save();
+        ctx.font = "24px Arial"; 
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowBlur = 10;
+        ctx.fillText(this.type === 'heart' ? "❤️" : "🗡️", this.x, this.y + floatY); 
+        ctx.restore();
+    }
+}
+
+class EnemyProjectile {
+    constructor(x, y, dx, dy, damage) {
+        this.x = x; this.y = y; this.dx = dx; this.dy = dy; this.damage = damage;
+        this.life = 120; this.radius = 8;
+        this.isReflected = false;
+    }
+    update() {
+        this.x += this.dx; this.y += this.dy; this.life--;
+        
+        // Cek tangkisan pedang
+        if (!this.isReflected && player.isAttacking) {
+            const dist = Math.hypot(this.x - player.x, this.y - player.y);
+            if (dist < 60) { // Range pedang
+                this.isReflected = true;
+                this.dx = -this.dx * 1.5;
+                this.dy = -this.dy * 1.5;
+                this.life = 120;
+                playSound('hit');
+                for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y, '#ffffff'));
+            }
+        }
+
+        if (this.isReflected) {
+            for (let i=0; i<enemies.length; i++) {
+                const e = enemies[i];
+                const dist = Math.hypot(this.x - e.x, this.y - e.y);
+                if (dist < this.radius + e.width/2) {
+                    e.takeDamage(this.damage * 3); // Mantul damage x3
+                    this.life = 0;
+                    break;
+                }
+            }
+        } else {
+            const dist = Math.hypot(this.x - player.x, this.y - player.y);
+            if (dist < this.radius + player.width/2) {
+                player.takeDamage(this.damage);
+                for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y, '#ff8800'));
+                this.life = 0;
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.fillStyle = this.isReflected ? '#00ffff' : '#ff8800'; 
+        ctx.shadowColor = this.isReflected ? '#00ffff' : '#ff0000'; 
+        ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+}
+
+class Shockwave {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.radius = 10; this.maxRadius = 150;
+        this.life = 1.0;
+    }
+    update() {
+        this.radius += 10;
+        this.life -= 0.05;
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.strokeStyle = '#9900ff';
+        ctx.lineWidth = 10;
+        ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.fillStyle = 'rgba(153, 0, 255, 0.2)';
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class Player {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.width = 30; this.height = 40; this.speed = 3.5;
+        
+        // Stats
+        this.maxHp = 100; this.hp = 100;
+        this.level = 1; this.xp = 0; this.maxXp = 50;
+        this.attackPower = 15;
+        
+        // Combat State
+        this.isAttacking = false;
+        this.attackCooldown = 0;
+        this.magicCooldownMax = 300; // 5 Detik buat skill AoE
+        this.magicCooldown = 0; // Cooldown sihir
+        this.visualFacing = 'right'; // Untuk arah hadap gambar karakter
+        this.aimDirection = 'right'; // Untuk arah tebasan pedang (up, down, left, right)
+    }
+
+    update() {
+        if (this.hp <= 0) return;
+
+        // Movement & Menentukan Arah Tebasan (Aim)
+        let dx = 0; let dy = 0;
+        
+        if (keys.left) { dx -= this.speed; this.visualFacing = 'left'; this.aimDirection = 'left'; }
+        else if (keys.right) { dx += this.speed; this.visualFacing = 'right'; this.aimDirection = 'right'; }
+        
+        if (keys.up) { dy -= this.speed; this.aimDirection = 'up'; }
+        else if (keys.down) { dy += this.speed; this.aimDirection = 'down'; }
+        
+        // Normalize diagonal speed
+        if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+
+        // Boundary check
+        this.x = Math.max(this.width/2, Math.min(canvas.width - this.width/2, this.x + dx));
+        this.y = Math.max(this.height/2, Math.min(canvas.height - this.height/2, this.y + dy));
+
+        // Attack Logic
+        if (this.attackCooldown > 0) this.attackCooldown--;
+        if (keys.attack && this.attackCooldown === 0) this.attack();
+        
+        // Super Skill Logic (Key F)
+        let skillBar = document.getElementById('skill-bar');
+        let skillText = document.getElementById('skill-text');
+        
+        if (this.magicCooldown > 0) {
+            this.magicCooldown--;
+            let pct = ((this.magicCooldownMax - this.magicCooldown) / this.magicCooldownMax) * 100;
+            if (skillBar) skillBar.style.width = pct + '%';
+            if (skillText) {
+                skillText.innerText = 'COOLDOWN';
+                skillText.classList.replace('text-purple-300', 'text-gray-400');
+            }
+        } else {
+            if (skillBar) skillBar.style.width = '100%';
+            if (skillText) {
+                skillText.innerText = 'READY!';
+                skillText.classList.replace('text-gray-400', 'text-purple-300');
+            }
+        }
+
+        if (keys.magic && this.magicCooldown === 0) {
+            this.superSkill();
+        }
+
+        // Check Loot pickup
+        for (let i = loot.length - 1; i >= 0; i--) {
+            const l = loot[i];
+            const dist = Math.hypot(this.x - l.x, this.y - l.y);
+            if (dist < this.width + l.radius) {
+                if (l instanceof CoinLoot) {
+                    coins += l.value;
+                    coinText.innerText = coins;
+                    playSound('coin');
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "+1 Coin", "#ffd700", 12));
+                } else if (l.type === 'heart') {
+                    let heal = 25;
+                    this.hp = Math.min(this.maxHp, this.hp + heal);
+                    playSound('coin');
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "+25 HP", "#00ff00", 12));
+                    updateUI();
+                } else if (l.type === 'sword') {
+                    this.attackPower += 2;
+                    playSound('coin');
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "ATK UP!", "#ffaa00", 12));
+                }
+                loot.splice(i, 1);
+            }
+        }
+    }
+
+    attack() {
+        this.isAttacking = true;
+        this.attackCooldown = 25; // Attack speed
+        
+        const hitRange = 70;
+        const hitWidth = 80; // Diperlebar agar musuh sejajar tetap kena
+        
+        let hitbox = { x: 0, y: 0, w: 0, h: 0 };
+        let knockX = 0, knockY = 0;
+
+        // Menyesuaikan posisi serangan berdasarkan 4 arah, area overlap ke badan player (-15)
+        if (this.aimDirection === 'right') {
+            hitbox = { x: this.x - 15, y: this.y - hitWidth/2, w: hitRange + 15, h: hitWidth };
+            knockX = 20;
+        } else if (this.aimDirection === 'left') {
+            hitbox = { x: this.x - hitRange, y: this.y - hitWidth/2, w: hitRange + 15, h: hitWidth };
+            knockX = -20;
+        } else if (this.aimDirection === 'up') {
+            hitbox = { x: this.x - hitWidth/2, y: this.y - hitRange, w: hitWidth, h: hitRange + 15 };
+            knockY = -20;
+        } else if (this.aimDirection === 'down') {
+            hitbox = { x: this.x - hitWidth/2, y: this.y - 15, w: hitWidth, h: hitRange + 15 };
+            knockY = 20;
+        }
+
+        // Damage ke musuh yang kena Hitbox (>= dan <= supaya akurat di ujung)
+        enemies.forEach(enemy => {
+            if (enemy.x >= hitbox.x && enemy.x <= hitbox.x + hitbox.w &&
+                enemy.y >= hitbox.y && enemy.y <= hitbox.y + hitbox.h) {
+                
+                let dmg = this.attackPower + Math.floor(Math.random() * 5);
+                enemy.takeDamage(dmg);
+                playSound('hit');
+                // Efek kepukul (Knockback), lebih kecil untuk boss
+                let res = enemy.isBoss ? 0.2 : 1.0;
+                enemy.x += knockX * res;
+                enemy.y += knockY * res;
+            }
+        });
+
+        setTimeout(() => { this.isAttacking = false; }, 150);
+    }
+
+    superSkill() {
+        this.magicCooldown = this.magicCooldownMax;
+        playSound('magic');
+        
+        // Visual efek ledakan area ungu raksasa
+        for(let j=0; j<30; j++) particles.push(new Particle(this.x, this.y, '#9900ff'));
+        particles.push(new Shockwave(this.x, this.y)); // Efek shockwave raksasa
+        floatingTexts.push(new FloatingText(this.x, this.y - 40, "SHADOW SMASH!", "#9900ff", 24));
+        
+        // Area serangan (radius 150)
+        enemies.forEach(e => {
+            const dist = Math.hypot(this.x - e.x, this.y - e.y);
+            if (dist < 150) {
+                // Damage massiv + knockback massiv
+                e.takeDamage(this.attackPower * 4); 
+                e.x += (e.x - this.x) * (e.isBoss ? 0.2 : 0.8);
+                e.y += (e.y - this.y) * (e.isBoss ? 0.2 : 0.8);
+                for(let p=0; p<5; p++) particles.push(new Particle(e.x, e.y, '#ff0000'));
+            }
+        });
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        floatingTexts.push(new FloatingText(this.x, this.y - this.height, `-${amount}`, "#ff0000"));
+        updateUI();
+        if (this.hp <= 0) gameOver();
+    }
+
+    gainXp(amount) {
+        this.xp += amount;
+        floatingTexts.push(new FloatingText(this.x, this.y - 40, `+${amount} XP`, "#00aaff", 12));
+        if (this.xp >= this.maxXp) this.levelUp();
+        updateUI();
+    }
+
+    levelUp() {
+        this.level++;
+        this.xp -= this.maxXp;
+        this.maxXp = Math.floor(this.maxXp * 1.5);
+        this.maxHp += 20; this.hp = this.maxHp;
+        this.attackPower += 5;
+        
+        playSound('level');
+        levelUpMsg.classList.remove('hidden');
+        setTimeout(() => { levelUpMsg.classList.add('hidden'); }, 2000);
+        for(let i=0; i<20; i++) particles.push(new Particle(this.x, this.y, '#ffff00'));
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Membalik gambar kalau jalan ke kiri
+        if (this.visualFacing === 'left') ctx.scale(-1, 1);
+
+        // Shadow bawah kaki
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(0, this.height/2, this.width/2, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+        // Gambar Animasi Karakter
+        const isMoving = keys.up || keys.down || keys.left || keys.right;
+        let frameCount = isMoving ? 6 : 4;
+        let pY = isMoving ? 0.5 : 0.05; // Baris atas (idle) atau bawah (lari)
+        
+        // Kalau diem, kunci di frame 0 biar nggak gerak/jitter kek PPT
+        const frameIdx = isMoving ? Math.floor(Date.now() / 120) % frameCount : 0;
+        
+        // Atur lebar crop supaya lebih ketat dan nggak bocor ke frame sebelah
+        let pW = isMoving ? 0.125 : 0.1875; // Frame lari = 0.125, Diem = 0.1875
+        let pX = isMoving ? 0.25 + frameIdx * 0.125 : 0.25; // Jarak antar frame
+        
+        let destW = 70 * (pW / 0.1875); // Scale destW secara proporsional supaya TIDAK gepeng/stretch pas lari
+        
+        let drawn = drawSpriteProportional(ctx, imgPlayer, 
+            pX, pY, pW, 0.45, 
+            -(destW/2), -45, destW, 70
+        );
+
+        if (!drawn) {
+            ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("🤺", 0, 0);
+        }
+        ctx.restore();
+
+        // Gambar Efek Tebasan Pedang (4 Arah)
+        if (this.isAttacking) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            
+            // Ayunan pedang menyesuaikan aimDirection
+            if (this.aimDirection === 'right') ctx.arc(20, 0, 35, -Math.PI/3, Math.PI/3);
+            else if (this.aimDirection === 'left') ctx.arc(-20, 0, 35, Math.PI - Math.PI/3, Math.PI + Math.PI/3);
+            else if (this.aimDirection === 'up') ctx.arc(0, -20, 35, -Math.PI/2 - Math.PI/3, -Math.PI/2 + Math.PI/3);
+            else if (this.aimDirection === 'down') ctx.arc(0, 20, 35, Math.PI/2 - Math.PI/3, Math.PI/2 + Math.PI/3);
+            
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+}
+
+class Decoration {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.scale = 0.8 + Math.random() * 0.4;
+    }
+    
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Transparan jika pemain / musuh ada di belakang pohon
+        if (this.type === 'tree') {
+            const chars = [player, ...enemies];
+            let behind = chars.some(c => this.y > c.y && (this.y - c.y) < 100 && Math.abs(this.x - c.x) < 60);
+            if (behind) ctx.globalAlpha = 0.4;
+        }
+        
+        ctx.scale(this.scale, this.scale);
+        
+        if (this.type === 'tree') {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath(); ctx.ellipse(0, 5, 20, 10, 0, 0, Math.PI*2); ctx.fill();
+            
+            ctx.fillStyle = '#5c4033';
+            ctx.fillRect(-6, -40, 12, 45);
+            
+            ctx.fillStyle = '#1e3814'; ctx.beginPath(); ctx.arc(0, -40, 30, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#2d5a1e'; ctx.beginPath(); ctx.arc(0, -60, 25, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#3a7326'; ctx.beginPath(); ctx.arc(0, -80, 20, 0, Math.PI*2); ctx.fill();
+        } else if (this.type === 'rock') {
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath(); ctx.ellipse(0, 3, 15, 8, 0, 0, Math.PI*2); ctx.fill();
+            
+            ctx.fillStyle = '#555'; ctx.beginPath(); ctx.ellipse(0, -5, 14, 10, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#777'; ctx.beginPath(); ctx.ellipse(-4, -8, 8, 6, 0, 0, Math.PI*2); ctx.fill();
+        } else if (this.type === 'bush') {
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath(); ctx.ellipse(0, 5, 18, 10, 0, 0, Math.PI*2); ctx.fill();
+            
+            ctx.fillStyle = '#1b3311'; ctx.beginPath(); ctx.arc(-10, -5, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#1b3311'; ctx.beginPath(); ctx.arc(10, -5, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#264a18'; ctx.beginPath(); ctx.arc(0, -12, 15, 0, Math.PI*2); ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+
+function initDecorations() {
+    decorations = [];
+    for(let i=0; i<20; i++) {
+        let x, y;
+        if (Math.random() < 0.5) { 
+            x = Math.random() * canvas.width;
+            y = Math.random() < 0.5 ? Math.random() * 150 : canvas.height - Math.random() * 150;
+        } else { 
+            x = Math.random() < 0.5 ? Math.random() * 150 : canvas.width - Math.random() * 150;
+            y = Math.random() * canvas.height;
+        }
+        decorations.push(new Decoration(x, y, 'tree'));
+    }
+    for(let i=0; i<15; i++) decorations.push(new Decoration(Math.random() * canvas.width, Math.random() * canvas.height, 'bush'));
+    for(let i=0; i<10; i++) decorations.push(new Decoration(Math.random() * canvas.width, Math.random() * canvas.height, 'rock'));
+}
+
+const BOSS_FRAMES = {
+    walk: [
+        { x: 94, w: 215 }, { x: 396, w: 296 }, { x: 739, w: 291 },
+        { x: 1053, w: 335 }, { x: 1400, w: 286 }, { x: 1712, w: 301 }
+    ],
+    attack: [
+        { x: 49, w: 238 }, { x: 293, w: 251 }, { x: 545, w: 247 },
+        { x: 848, w: 212 }, { x: 1100, w: 288 }, { x: 1421, w: 276 }, { x: 1714, w: 327 }
+    ],
+    die: [
+        { x: 50, w: 228 }, { x: 301, w: 244 }, { x: 585, w: 218 }, { x: 888, w: 241 },
+        { x: 1180, w: 242 }, { x: 1462, w: 226 }, { x: 1754, w: 241 }, { x: 2058, w: 252 }
+    ]
+};
+
+class Enemy {
+    constructor(x, y, type) {
+        this.x = x; this.y = y; this.type = type;
+        this.width = 24; this.height = 24;
+        
+        if (type === 'slime') {
+            this.hp = 20 + (player.level * 5); this.maxHp = this.hp;
+            this.speed = 1.0; this.color = '#32cd32';
+            this.xp = 10; this.damage = 5; this.emoji = "🟢";
+        } else if (type === 'skeleton') {
+            this.hp = 35 + (player.level * 8); this.maxHp = this.hp;
+            this.speed = 1.2; this.color = '#dddddd';
+            this.xp = 20; this.damage = 12; this.emoji = "💀";
+        } else if (type === 'bat') {
+            this.hp = 15 + (player.level * 3); this.maxHp = this.hp;
+            this.speed = 2.0; this.color = '#8a2be2';
+            this.xp = 15; this.damage = 8; this.emoji = "🦇";
+        } else if (type === 'mage') {
+            this.hp = 25 + (player.level * 5); this.maxHp = this.hp;
+            this.speed = 0.8; this.color = '#ff4400';
+            this.xp = 25; this.damage = 15; this.emoji = "🧙";
+        }
+        this.cooldown = 0;
+        this.bossState = 'walk'; // state buat boss (walk, attack, die)
+        this.stateTimer = 0;
+    }
+
+    update() {
+        if (this.isBoss && this.bossState === 'die') {
+            this.stateTimer++;
+            if (this.stateTimer > 120) { // 120 frame death animation (2 detik)
+                this.finishDie();
+            }
+            return; // stop moving
+        }
+        
+        if (this.isBoss && this.bossState === 'attack') {
+            this.stateTimer++;
+            if (this.stateTimer > 35) { // 7 frame attack animation
+                this.bossState = 'walk';
+            }
+            return; // stop moving while attacking
+        }
+
+        // Jalan ke arah player
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (this.type === 'mage') {
+            if (dist > 200) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            } else if (dist < 150) {
+                this.x -= (dx / dist) * this.speed * 0.5; // mundur pelan pelan
+                this.y -= (dy / dist) * this.speed * 0.5;
+            }
+            
+            if (this.cooldown > 0) this.cooldown--;
+            if (this.cooldown === 0) {
+                const px = (dx / dist) * 2; // pelankan laju bola api jadi 2
+                const py = (dy / dist) * 2;
+                enemyProjectiles.push(new EnemyProjectile(this.x, this.y, px, py, this.damage));
+                this.cooldown = 240; // tembak per 4 detik (biar gak kekencengan)
+            }
+            return;
+        }
+
+        if (dist > 5) {
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+        }
+        
+        // Tambahan gerak gelombang untuk kelelawar
+        if (this.type === 'bat') {
+            this.sinOffset = (this.sinOffset || 0) + 0.15;
+            this.y += Math.sin(this.sinOffset) * 2;
+        }
+
+        // Serang Player
+        if (this.cooldown > 0) this.cooldown--;
+        if (dist < (this.width/2 + player.width/2 + 20) && this.cooldown === 0) {
+            if (this.isBoss) {
+                this.bossState = 'attack';
+                this.stateTimer = 0;
+            }
+            player.takeDamage(this.damage);
+            this.cooldown = 90; // cooldown 1.5 detik
+            // Player kepukul mundur
+            player.x += (dx / dist) * 15;
+            player.y += (dy / dist) * 15;
+        }
+    }
+
+    takeDamage(amount) {
+        if (this.isBoss && this.bossState === 'die') return; // kebal pas mati
+        
+        this.hp -= amount;
+        floatingTexts.push(new FloatingText(this.x, this.y - 15, amount, "#ffffff"));
+        for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y, this.color));
+        if (this.hp <= 0) {
+            if (this.isBoss) {
+                this.bossState = 'die';
+                this.stateTimer = 0;
+            } else {
+                this.finishDie();
+            }
+        }
+    }
+
+    finishDie() {
+        player.gainXp(this.xp);
+        for(let i=0; i<15; i++) particles.push(new Particle(this.x, this.y, this.color));
+        
+        // 100% Drop Koin saat monster mati
+        loot.push(new CoinLoot(this.x, this.y, 1));
+        
+        // 20% Chance drop item
+        let rand = Math.random();
+        if (rand < 0.10) {
+            loot.push(new ItemLoot(this.x + 10, this.y, 'heart'));
+        } else if (rand < 0.15) {
+            loot.push(new ItemLoot(this.x - 10, this.y, 'sword'));
+        }
+        
+        const index = enemies.indexOf(this);
+        if (index > -1) enemies.splice(index, 1);
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // Balik muka (hadap kiri) kalau player di kirinya
+        if (player.x < this.x) ctx.scale(-1, 1);
+        
+        if (this.isBoss) {
+            ctx.scale(2.5, 2.5); // Boss ukurannya raksasa!
+        }
+
+        // Bayangan
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(0, this.height/2 + 5, this.width/2, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+        const frameIdx = Math.floor(Date.now() / 200) % 4;
+        let drawn = false;
+
+        // Ambil gambar monster pakai crop proporsional
+        if (this.isBoss) {
+            let f, sy, col;
+            if (this.bossState === 'walk') {
+                col = Math.floor(Date.now() / 150) % 6;
+                f = BOSS_FRAMES.walk[col];
+                sy = 384 + 40; 
+            } else if (this.bossState === 'attack') {
+                col = Math.floor(this.stateTimer / 5) % 7; 
+                f = BOSS_FRAMES.attack[col];
+                sy = 768 + 40;
+            } else if (this.bossState === 'die') {
+                col = Math.floor(this.stateTimer / 8); // Play full 8 frames smoothly
+                if (col >= 8) col = 7; // diam di abu pas udah kelar
+                f = BOSS_FRAMES.die[col];
+                sy = 1152 + 40;
+            }
+
+            let scale = 90 / 344; // keep height scale constant
+            let dw = f.w * scale;
+            let dh = 344 * scale; 
+            
+            // Jangkar boss persis di tengah bounding box-nya sendiri
+            let dx = -(dw / 2); 
+            let dy = -55;
+
+            if (imgBoss.complete && imgBoss.naturalWidth > 0) {
+                // Gambar pakai exact crop
+                ctx.drawImage(imgBoss, f.x, sy, f.w, 344, dx, dy, dw, dh);
+                drawn = true;
+            }
+        } else if (this.type === 'slime') {
+            drawn = drawSpriteProportional(ctx, imgEntities, 0 + (frameIdx * 0.0875), 0.02, 0.0875, 0.28, -25, -35, 50, 50);
+        } else if (this.type === 'skeleton') {
+            drawn = drawSpriteProportional(ctx, imgEntities, 0.35 + (frameIdx * 0.0875), 0.02, 0.0875, 0.30, -25, -50, 50, 65);
+        } else if (this.type === 'bat') {
+            // Animasi dimatikan. pY digeser ke 0.12 untuk menghindari teks "BAT" di atasnya.
+            drawn = drawSpriteProportional(ctx, imgEntities, 0.72, 0.12, 0.12, 0.16, -25, -35, 50, 50);
+        }
+        
+        if (!drawn) {
+            ctx.font = "24px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(this.emoji, 0, 0);
+        }
+        
+        ctx.restore();
+
+        // Health bar enemy
+        const hpPercent = this.hp / this.maxHp;
+        ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 25, 30, 4);
+        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 15, this.y - 25, 30 * hpPercent, 4);
+    }
+}
+
+let player;
+
+function spawnEnemy() {
+    if (isPlaying) {
+        // Cek Boss Monster tiap level 5, 10, 15, dst
+        if (player.level > 0 && player.level % 5 === 0 && bossSpawnedForLevel !== player.level && !enemies.some(e => e.isBoss)) {
+            bossSpawnedForLevel = player.level;
+            // Spawn Boss dan bersihkan kroco
+            enemies = enemies.filter(e => e.isBoss);
+            let boss = new Enemy(canvas.width/2, -100, 'skeleton');
+            boss.isBoss = true;
+            // Nerf stat Boss biar nggak kemustahilan
+            boss.hp = 200 + player.level * 50; boss.maxHp = boss.hp;
+            boss.damage = 15 + player.level * 2; 
+            boss.speed = 1.0; boss.xp = 300;
+            boss.width = 60; boss.height = 60; // hitbox besar
+            enemies.push(boss);
+            floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "BOSS BATTLE!", "#ff0000", 40));
+        } else if (enemies.length < 5 + player.level * 2 && !enemies.some(e => e.isBoss)) {
+            const types = ['slime', 'slime', 'skeleton', 'bat', 'mage'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            // Spawn di pinggir layar
+            let x, y;
+            if (Math.random() > 0.5) {
+                x = Math.random() > 0.5 ? -50 : canvas.width + 50;
+                y = Math.random() * canvas.height;
+            } else {
+                x = Math.random() * canvas.width;
+                y = Math.random() > 0.5 ? -50 : canvas.height + 50;
+            }
+            enemies.push(new Enemy(x, y, type));
+        }
+    }
+    
+    // Tetap jalanin timer biarpun lagi pause/shop, supaya loopnya gak putus
+    setTimeout(spawnEnemy, 1500 - Math.min(1000, player.level * 50));
+}
+
+function updateUI() {
+    const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+    hpBar.style.width = `${hpPercent}%`;
+    hpText.innerText = `${Math.floor(player.hp)}/${player.maxHp}`;
+    
+    const xpPercent = (player.xp / player.maxXp) * 100;
+    xpBar.style.width = `${xpPercent}%`;
+    levelText.innerText = player.level;
+}
+
+function drawBackground() {
+    ctx.fillStyle = '#263a1e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#2d4c24';
+    for(let i=0; i<80; i++) {
+        let gx = (i * 137) % canvas.width;
+        let gy = (i * 91) % canvas.height;
+        ctx.fillRect(gx, gy, 12, 6);
+    }
+}
+
+function gameLoop(timestamp) {
+    if (!isPlaying) return;
+
+    player.update();
+    enemies.forEach(e => e.update());
+    particles.forEach(p => p.update());
+    floatingTexts.forEach(f => f.update());
+    loot.forEach(l => l.update());
+    enemyProjectiles.forEach(ep => ep.update());
+
+    particles = particles.filter(p => p.life > 0);
+    floatingTexts = floatingTexts.filter(f => f.life > 0);
+    enemyProjectiles = enemyProjectiles.filter(ep => ep.life > 0);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    
+    // Sortir urutan gambar dari atas ke bawah Y (Efek 3D / Tumpuk)
+    let renderList = [player, ...enemies, ...loot, ...enemyProjectiles, ...decorations];
+    renderList.sort((a, b) => a.y - b.y);
+    renderList.forEach(entity => entity.draw(ctx));
+    
+    particles.forEach(p => p.draw(ctx));
+    floatingTexts.forEach(f => f.draw(ctx));
+
+    animationId = requestAnimationFrame(gameLoop);
+}
+
+let enemyProjectiles = [];
+
+function startGame() {
+    player = new Player(canvas.width/2, canvas.height/2);
+    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = [];
+    initDecorations();
+    decorationsInitialized = true;
+    coins = 0; coinText.innerText = coins;
+    
+    // Inisialisasi Audio (User Interaction)
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    isPlaying = true;
+    menuScreen.classList.add('hidden');
+    updateUI();
+    
+    spawnEnemy();
+    animationId = requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+    isPlaying = false;
+    cancelAnimationFrame(animationId);
+    
+    menuTitle.innerText = "GAME OVER";
+    menuTitle.classList.replace('text-transparent', 'text-red-500');
+    menuTitle.classList.replace('bg-gradient-to-r', 'bg-none');
+    document.getElementById('menu-desc').innerHTML = `Level Reached: ${player.level} <br> Coins: ${coins}`;
+    startBtn.innerText = "TRY AGAIN";
+    menuScreen.classList.remove('hidden');
+}
+
+// Input Keyboard
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
+    if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+    if (e.code === 'Space') { keys.attack = true; e.preventDefault(); }
+    if (e.code === 'KeyF') { keys.magic = true; e.preventDefault(); }
+    if (e.code === 'KeyB') {
+        const shopScreen = document.getElementById('shop-screen');
+        if (shopScreen.classList.contains('hidden')) openShop();
+        else closeShop();
+    }
+});
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
+    if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+    if (e.code === 'Space') keys.attack = false;
+    if (e.code === 'KeyF') keys.magic = false;
+});
+
+// Shop Logic
+function openShop() {
+    if (!isPlaying) return;
+    const shopScreen = document.getElementById('shop-screen');
+    const shopCoinsDisplay = document.getElementById('shop-coins-display');
+    shopScreen.classList.remove('hidden');
+    shopScreen.classList.add('flex');
+    shopCoinsDisplay.innerText = coins;
+    isPlaying = false; // Pause game while in shop
+}
+
+function closeShop() {
+    const shopScreen = document.getElementById('shop-screen');
+    shopScreen.classList.remove('flex');
+    shopScreen.classList.add('hidden');
+    isPlaying = true;
+    requestAnimationFrame(gameLoop);
+}
+
+document.getElementById('shop-btn-ui').addEventListener('click', openShop);
+document.getElementById('close-shop').addEventListener('click', closeShop);
+
+document.getElementById('buy-hp').addEventListener('click', () => {
+    if (coins >= 10 && player.hp < player.maxHp) {
+        coins -= 10; 
+        player.hp = Math.min(player.maxHp, player.hp + 50);
+        document.getElementById('shop-coins-display').innerText = coins; 
+        coinText.innerText = coins; 
+        updateUI();
+    }
+});
+
+document.getElementById('buy-atk').addEventListener('click', () => {
+    if (coins >= 25) {
+        coins -= 25; 
+        player.attackPower += 5;
+        document.getElementById('shop-coins-display').innerText = coins; 
+        coinText.innerText = coins;
+    }
+});
+
+document.getElementById('buy-maxhp').addEventListener('click', () => {
+    if (coins >= 30) {
+        coins -= 30; 
+        player.maxHp += 20; 
+        player.hp += 20;
+        document.getElementById('shop-coins-display').innerText = coins; 
+        coinText.innerText = coins; 
+        updateUI();
+    }
+});
+
+// Mobile Input
+function bindBtn(id, keyProp) {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyProp] = true; });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyProp] = false; });
+    btn.addEventListener('mousedown', (e) => { keys[keyProp] = true; });
+    btn.addEventListener('mouseup', (e) => { keys[keyProp] = false; });
+    btn.addEventListener('mouseleave', (e) => { keys[keyProp] = false; });
+}
+bindBtn('btn-up', 'up'); bindBtn('btn-down', 'down');
+bindBtn('btn-left', 'left'); bindBtn('btn-right', 'right');
+bindBtn('btn-attack', 'attack');
+
+startBtn.addEventListener('click', startGame);
+
+</script>
+</body>
+</html>
