@@ -501,11 +501,28 @@ class PlayerProjectile {
             const dist = Math.hypot(this.x - e.x, this.y - e.y);
             if (dist < this.size + (e.width / 2)) {
                 this.hitEnemies.add(e);
+
+                // Cek apakah musuh bertameng dan terkena dari arah depan
+                if (e.hasShield) {
+                    let hitFromFront = false;
+                    if (player.x < e.x && this.vx > 0) hitFromFront = true;
+                    else if (player.x > e.x && this.vx < 0) hitFromFront = true;
+                    else if (Math.abs(this.vy) > Math.abs(this.vx)) hitFromFront = true;
+
+                    if (hitFromFront) {
+                        playSound('hit');
+                        for (let p = 0; p < 6; p++) particles.push(new Particle(this.x, this.y, '#ffffff'));
+                        floatingTexts.push(new FloatingText(e.x, e.y - 20, "BLOCKED!", "#ffd700", 14));
+                        this.life = 0;
+                        break;
+                    }
+                }
+
                 e.takeDamage(this.damage);
                 playSound('hit');
 
                 // Knockback peluru
-                let res = e.isBoss ? 0.2 : 0.8;
+                let res = e.isBoss ? 0.2 : (e.isElite ? 0.35 : 0.8);
                 let dirX = this.vx !== 0 ? Math.sign(this.vx) : 0;
                 let dirY = this.vy !== 0 ? Math.sign(this.vy) : 0;
                 e.x += dirX * 12 * res;
@@ -578,6 +595,53 @@ class Shockwave {
     }
 }
 
+class BossShockwave {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.radius = 15;
+        this.maxRadius = 220;
+        this.damage = 18;
+        this.hitPlayer = false;
+        this.life = 1.0;
+    }
+    update() {
+        this.radius += 5;
+        this.life = Math.max(0, 1.0 - (this.radius / this.maxRadius));
+        
+        // Cek tabrakan dengan player
+        if (!this.hitPlayer && player) {
+            const dist = Math.hypot(this.x - player.x, this.y - player.y);
+            // Kena jika berada di garis cincin shockwave
+            if (Math.abs(dist - this.radius) < 18) {
+                this.hitPlayer = true;
+                player.takeDamage(this.damage);
+                playSound('hit');
+                const ang = Math.atan2(player.y - this.y, player.x - this.x);
+                player.x += Math.cos(ang) * 20;
+                player.y += Math.sin(ang) * 20;
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 8;
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
 class Player {
     constructor(x, y) {
         this.x = x; this.y = y;
@@ -598,6 +662,8 @@ class Player {
         // Combat State
         this.isAttacking = false;
         this.attackCooldown = 0;
+        this.comboStep = 0; // Combo 1 -> 2 -> 3 (Finisher)
+        this.lastAttackTime = 0;
         this.magicCooldownMax = 300; // 5 Detik buat skill AoE
         this.magicCooldown = 0; // Cooldown sihir
         this.visualFacing = 'right'; // Untuk arah hadap gambar karakter
@@ -680,27 +746,36 @@ class Player {
 
     attack() {
         this.isAttacking = true;
-        this.attackCooldown = 22; // Kecepatan serang responsif
+        this.attackCooldown = 18; // Kecepatan serang kombo responsif
         
-        const hitRange = 75 + this.swordRangeLevel * 20;
-        const hitWidth = 85 + this.swordRangeLevel * 22;
+        let now = Date.now();
+        if (now - this.lastAttackTime > 900) {
+            this.comboStep = 0;
+        }
+        this.comboStep = (this.comboStep % 3) + 1; // 1, 2, 3
+        this.lastAttackTime = now;
+
+        let comboBonus = this.comboStep === 2 ? 15 : (this.comboStep === 3 ? 30 : 0);
+        const hitRange = 75 + this.swordRangeLevel * 20 + comboBonus;
+        const hitWidth = 85 + this.swordRangeLevel * 22 + comboBonus;
         
         let hitbox = { x: 0, y: 0, w: 0, h: 0 };
         let knockX = 0, knockY = 0;
+        let knockPower = this.comboStep === 3 ? 35 : (this.comboStep === 2 ? 26 : 18);
 
         // Menyesuaikan posisi serangan berdasarkan 4 arah
         if (this.aimDirection === 'right') {
             hitbox = { x: this.x - 15, y: this.y - hitWidth/2, w: hitRange + 15, h: hitWidth };
-            knockX = 22;
+            knockX = knockPower;
         } else if (this.aimDirection === 'left') {
             hitbox = { x: this.x - hitRange, y: this.y - hitWidth/2, w: hitRange + 15, h: hitWidth };
-            knockX = -22;
+            knockX = -knockPower;
         } else if (this.aimDirection === 'up') {
             hitbox = { x: this.x - hitWidth/2, y: this.y - hitRange, w: hitWidth, h: hitRange + 15 };
-            knockY = -22;
+            knockY = -knockPower;
         } else if (this.aimDirection === 'down') {
             hitbox = { x: this.x - hitWidth/2, y: this.y - 15, w: hitWidth, h: hitRange + 15 };
-            knockY = 22;
+            knockY = knockPower;
         }
 
         // Damage ke musuh yang kena Hitbox
@@ -708,21 +783,26 @@ class Player {
             if (enemy.x >= hitbox.x && enemy.x <= hitbox.x + hitbox.w &&
                 enemy.y >= hitbox.y && enemy.y <= hitbox.y + hitbox.h) {
                 
-                let dmg = this.attackPower + Math.floor(Math.random() * 5);
+                let comboMultiplier = this.comboStep === 3 ? 1.5 : (this.comboStep === 2 ? 1.2 : 1.0);
+                let dmg = Math.floor((this.attackPower + Math.floor(Math.random() * 5)) * comboMultiplier);
                 enemy.takeDamage(dmg);
                 playSound('hit');
-                let res = enemy.isBoss ? 0.2 : 1.0;
+                let res = enemy.isBoss ? 0.2 : (enemy.isElite ? 0.35 : 1.0);
                 enemy.x += knockX * res;
                 enemy.y += knockY * res;
             }
         });
 
-        // Luncurkan proyektil tebasan (Sword Wave)
-        if (this.swordWaveLevel > 0) {
-            this.shootSwordWave();
+        // Combo ke-3 melepaskan Finisher Sword Wave!
+        if (this.comboStep === 3) {
+            if (this.swordWaveLevel > 0) {
+                this.shootSwordWave();
+            }
+            floatingTexts.push(new FloatingText(this.x, this.y - 35, "FINISHER BLAST!", "#38bdf8", 15));
+            for(let p=0; p<8; p++) particles.push(new Particle(this.x, this.y, '#38bdf8'));
         }
 
-        setTimeout(() => { this.isAttacking = false; }, 150);
+        setTimeout(() => { this.isAttacking = false; }, 140);
     }
 
     shootSwordWave() {
@@ -741,19 +821,19 @@ class Player {
         if (this.swordWaveLevel === 1) {
             let vx = Math.cos(baseAngle) * speed;
             let vy = Math.sin(baseAngle) * speed;
-            let dmg = Math.max(10, Math.floor(this.attackPower * 0.85));
+            let dmg = Math.max(12, Math.floor(this.attackPower * 1.0));
             playerProjectiles.push(new PlayerProjectile(startX, startY, vx, vy, dmg, 18, 2, baseAngle));
         } else if (this.swordWaveLevel === 2) {
             let vx = Math.cos(baseAngle) * (speed + 1);
             let vy = Math.sin(baseAngle) * (speed + 1);
-            let dmg = Math.max(15, Math.floor(this.attackPower * 1.15));
+            let dmg = Math.max(18, Math.floor(this.attackPower * 1.35));
             playerProjectiles.push(new PlayerProjectile(startX, startY, vx, vy, dmg, 28, 4, baseAngle));
         } else if (this.swordWaveLevel >= 3) {
             const angles = [baseAngle, baseAngle + 0.35, baseAngle - 0.35];
             angles.forEach(ang => {
                 let vx = Math.cos(ang) * (speed + 0.5);
                 let vy = Math.sin(ang) * (speed + 0.5);
-                let dmg = Math.max(12, Math.floor(this.attackPower * 1.0));
+                let dmg = Math.max(15, Math.floor(this.attackPower * 1.15));
                 playerProjectiles.push(new PlayerProjectile(startX, startY, vx, vy, dmg, 22, 3, ang));
             });
         }
@@ -772,6 +852,10 @@ class Player {
         enemies.forEach(e => {
             const dist = Math.hypot(this.x - e.x, this.y - e.y);
             if (dist < 150) {
+                if (e.hasShield) {
+                    e.hasShield = false;
+                    floatingTexts.push(new FloatingText(e.x, e.y - 25, "SHIELD BROKEN!", "#ff4444", 16));
+                }
                 // Damage massiv + knockback massiv
                 e.takeDamage(this.attackPower * 4); 
                 e.x += (e.x - this.x) * (e.isBoss ? 0.2 : 0.8);
@@ -859,14 +943,15 @@ class Player {
             ctx.save();
             ctx.translate(this.x, this.y);
             
-            const slashRadius = 38 + this.swordRangeLevel * 10;
+            const comboArcBonus = this.comboStep === 3 ? 14 : (this.comboStep === 2 ? 6 : 0);
+            const slashRadius = 38 + this.swordRangeLevel * 10 + comboArcBonus;
             const offset = 20 + this.swordRangeLevel * 5;
 
-            // Outer cyan glow
-            ctx.shadowColor = '#00ffff';
-            ctx.shadowBlur = 12;
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 6;
+            // Outer glow tebasan (combo 3 finisher lebih tebal & bercahaya)
+            ctx.shadowColor = this.comboStep === 3 ? '#00ffff' : '#38bdf8';
+            ctx.shadowBlur = this.comboStep === 3 ? 20 : 12;
+            ctx.strokeStyle = this.comboStep === 3 ? '#00ffff' : '#38bdf8';
+            ctx.lineWidth = this.comboStep === 3 ? 8 : (this.comboStep === 2 ? 6.5 : 5);
             ctx.beginPath();
             
             if (this.aimDirection === 'right') ctx.arc(offset, 0, slashRadius, -Math.PI/3, Math.PI/3);
@@ -977,24 +1062,52 @@ class Enemy {
     constructor(x, y, type) {
         this.x = x; this.y = y; this.type = type;
         this.width = 24; this.height = 24;
+        this.hasShield = false;
+        this.isElite = false;
+        this.chargeState = 'walk';
+        this.chargeTimer = 0;
+        this.dashDir = { x: 0, y: 0 };
+        this.bossStompTimer = 360;
+        this.hasSummonedMinions = false;
         
         if (type === 'slime') {
-            this.hp = 20 + (player.level * 5); this.maxHp = this.hp;
+            this.hp = 25 + (player.level * 6); this.maxHp = this.hp;
             this.speed = 1.0; this.color = '#32cd32';
-            this.xp = 10; this.damage = 5; this.emoji = "🟢";
+            this.xp = 12; this.damage = 6; this.emoji = "🟢";
         } else if (type === 'skeleton') {
-            this.hp = 35 + (player.level * 8); this.maxHp = this.hp;
+            this.hp = 40 + (player.level * 9); this.maxHp = this.hp;
             this.speed = 1.2; this.color = '#dddddd';
             this.xp = 20; this.damage = 12; this.emoji = "💀";
         } else if (type === 'bat') {
-            this.hp = 15 + (player.level * 3); this.maxHp = this.hp;
+            this.hp = 20 + (player.level * 4); this.maxHp = this.hp;
             this.speed = 2.0; this.color = '#8a2be2';
-            this.xp = 15; this.damage = 8; this.emoji = "🦇";
+            this.xp = 15; this.damage = 9; this.emoji = "🦇";
         } else if (type === 'mage') {
-            this.hp = 25 + (player.level * 5); this.maxHp = this.hp;
+            this.hp = 30 + (player.level * 6); this.maxHp = this.hp;
             this.speed = 0.8; this.color = '#ff4400';
             this.xp = 25; this.damage = 15; this.emoji = "🧙";
+        } else if (type === 'shield') {
+            this.hp = 55 + (player.level * 10); this.maxHp = this.hp;
+            this.speed = 1.0; this.color = '#708090';
+            this.xp = 35; this.damage = 14; this.emoji = "🛡️";
+            this.hasShield = true;
+        } else if (type === 'charger') {
+            this.hp = 35 + (player.level * 7); this.maxHp = this.hp;
+            this.speed = 1.3; this.color = '#ff1493';
+            this.xp = 30; this.damage = 16; this.emoji = "🐗";
         }
+
+        // Elite roll jika level >= 6 dan bukan boss
+        if (player.level >= 6 && !this.isBoss && Math.random() < 0.25) {
+            this.isElite = true;
+            this.hp = Math.floor(this.hp * 2.5); this.maxHp = this.hp;
+            this.speed *= 1.2;
+            this.damage = Math.floor(this.damage * 1.3);
+            this.xp *= 3;
+            this.width = Math.floor(this.width * 1.3);
+            this.height = Math.floor(this.height * 1.3);
+        }
+
         this.cooldown = 0;
         this.bossState = 'walk'; // state buat boss (walk, attack, die)
         this.stateTimer = 0;
@@ -1017,11 +1130,38 @@ class Enemy {
             return; // stop moving while attacking
         }
 
+        // Boss Spesial Skill: Earthquake Stomp & Minion Summon
+        if (this.isBoss) {
+            this.bossStompTimer--;
+            if (this.bossStompTimer === 45) {
+                floatingTexts.push(new FloatingText(this.x, this.y - 70, "EARTHQUAKE!", "#ff3333", 22));
+                for (let k = 0; k < 12; k++) particles.push(new Particle(this.x, this.y, '#ff3333'));
+            }
+            if (this.bossStompTimer <= 0) {
+                bossShockwaves.push(new BossShockwave(this.x, this.y));
+                playSound('hit');
+                this.bossStompTimer = 420; // reset cooldown (~7s)
+            }
+
+            // Minion summon di 50% HP
+            if (!this.hasSummonedMinions && this.hp <= this.maxHp * 0.5) {
+                this.hasSummonedMinions = true;
+                floatingTexts.push(new FloatingText(this.x, this.y - 80, "MINIONS, TO ARMS!", "#ff0000", 28));
+                playSound('magic');
+                for (let m = 0; m < 4; m++) {
+                    let offX = Math.cos(m * Math.PI / 2) * 80;
+                    let offY = Math.sin(m * Math.PI / 2) * 80;
+                    enemies.push(new Enemy(this.x + offX, this.y + offY, 'skeleton'));
+                }
+            }
+        }
+
         // Jalan ke arah player
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const dist = Math.hypot(dx, dy);
 
+        // Perilaku Mage
         if (this.type === 'mage') {
             if (dist > 200) {
                 this.x += (dx / dist) * this.speed;
@@ -1033,17 +1173,57 @@ class Enemy {
             
             if (this.cooldown > 0) this.cooldown--;
             if (this.cooldown === 0) {
-                const px = (dx / dist) * 2; // pelankan laju bola api jadi 2
+                const px = (dx / dist) * 2;
                 const py = (dy / dist) * 2;
                 enemyProjectiles.push(new EnemyProjectile(this.x, this.y, px, py, this.damage));
-                this.cooldown = 240; // tembak per 4 detik (biar gak kekencengan)
+                this.cooldown = 240; // tembak per 4 detik
             }
             return;
         }
 
-        if (dist > 5) {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
+        // Perilaku Charger / Dasher
+        if (this.type === 'charger') {
+            if (this.chargeState === 'walk') {
+                if (dist > 5) {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+                if (dist < 220 && dist > 60 && Math.random() < 0.02) {
+                    this.chargeState = 'windup';
+                    this.chargeTimer = 25;
+                    this.dashDir = { x: dx / dist, y: dy / dist };
+                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "!", "#ff1493", 22));
+                }
+            } else if (this.chargeState === 'windup') {
+                this.x += (Math.random() - 0.5) * 4;
+                this.chargeTimer--;
+                if (this.chargeTimer <= 0) {
+                    this.chargeState = 'dash';
+                    this.chargeTimer = 22;
+                    playSound('wave');
+                }
+                return;
+            } else if (this.chargeState === 'dash') {
+                this.x += this.dashDir.x * 7.5;
+                this.y += this.dashDir.y * 7.5;
+                if (Math.random() < 0.5) particles.push(new Particle(this.x, this.y, '#ff1493'));
+                
+                if (dist < (this.width/2 + player.width/2 + 15)) {
+                    player.takeDamage(Math.floor(this.damage * 1.4));
+                    this.chargeState = 'walk';
+                }
+
+                this.chargeTimer--;
+                if (this.chargeTimer <= 0) {
+                    this.chargeState = 'walk';
+                }
+                return;
+            }
+        } else {
+            if (dist > 5) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            }
         }
         
         // Tambahan gerak gelombang untuk kelelawar
@@ -1071,7 +1251,7 @@ class Enemy {
         if (this.isBoss && this.bossState === 'die') return; // kebal pas mati
         
         this.hp -= amount;
-        floatingTexts.push(new FloatingText(this.x, this.y - 15, amount, "#ffffff"));
+        floatingTexts.push(new FloatingText(this.x, this.y - 15, amount, this.isElite ? "#ffaa00" : "#ffffff"));
         for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y, this.color));
         if (this.hp <= 0) {
             if (this.isBoss) {
@@ -1105,9 +1285,14 @@ class Enemy {
             loot.push(new ItemLoot(this.x + 20, this.y, 'heart'));
             loot.push(new ItemLoot(this.x, this.y + 20, 'sword'));
             floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! +25 COINS", "#ffd700", 28));
+        } else if (this.isElite) {
+            // Elite drops 5 coins + high heart drop
+            loot.push(new CoinLoot(this.x, this.y, 5));
+            if (Math.random() < 0.5) loot.push(new ItemLoot(this.x, this.y, 'heart'));
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, "★ ELITE DEFEATED! +5 COINS", "#ffd700", 16));
         } else {
             // Normal monster drops
-            let coinVal = this.type === 'mage' ? 2 : 1;
+            let coinVal = this.type === 'mage' || this.type === 'shield' ? 2 : 1;
             loot.push(new CoinLoot(this.x, this.y, coinVal));
             
             let rand = Math.random();
@@ -1126,6 +1311,13 @@ class Enemy {
         ctx.save();
         ctx.translate(this.x, this.y);
         
+        // Aura Emas jika Elite
+        if (this.isElite) {
+            ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
+            ctx.beginPath(); ctx.ellipse(0, this.height/2 + 5, this.width/2 + 10, 8, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2.5; ctx.stroke();
+        }
+
         // Balik muka (hadap kiri) kalau player di kirinya
         if (player.x < this.x) ctx.scale(-1, 1);
         
@@ -1173,10 +1365,17 @@ class Enemy {
             }
         } else if (this.type === 'slime') {
             drawn = drawSpriteProportional(ctx, imgEntities, 0 + (frameIdx * 0.0875), 0.02, 0.0875, 0.28, -25, -35, 50, 50);
-        } else if (this.type === 'skeleton') {
+        } else if (this.type === 'skeleton' || this.type === 'shield') {
             drawn = drawSpriteProportional(ctx, imgEntities, 0.35 + (frameIdx * 0.0875), 0.02, 0.0875, 0.30, -25, -50, 50, 65);
-        } else if (this.type === 'bat') {
-            // Animasi dimatikan. pY digeser ke 0.12 untuk menghindari teks "BAT" di atasnya.
+            // Gambar tameng di depan jika punya tameng
+            if (this.hasShield) {
+                ctx.fillStyle = '#708090';
+                ctx.fillRect(8, -35, 8, 30);
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(8, -35, 8, 30);
+            }
+        } else if (this.type === 'bat' || this.type === 'charger') {
             drawn = drawSpriteProportional(ctx, imgEntities, 0.72, 0.12, 0.12, 0.16, -25, -35, 50, 50);
         }
         
@@ -1191,6 +1390,11 @@ class Enemy {
         const hpPercent = this.hp / this.maxHp;
         ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 25, 30, 4);
         ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 15, this.y - 25, 30 * hpPercent, 4);
+
+        if (this.isElite) {
+            ctx.font = "8px Arial"; ctx.textAlign = "center";
+            ctx.fillStyle = '#ffd700'; ctx.fillText("★ ELITE", this.x, this.y - 29);
+        }
     }
 }
 
@@ -1213,8 +1417,11 @@ function spawnEnemy() {
             enemies.push(boss);
             floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "BOSS BATTLE!", "#ff0000", 40));
         } else if (enemies.length < Math.min(18, 5 + Math.floor(player.level * 0.9)) && !enemies.some(e => e.isBoss)) {
-            const types = ['slime', 'slime', 'skeleton', 'bat', 'mage'];
-            const type = types[Math.floor(Math.random() * types.length)];
+            let pool = ['slime', 'skeleton', 'bat', 'mage'];
+            if (player.level >= 3) pool.push('charger');
+            if (player.level >= 5) pool.push('shield', 'shield');
+            if (player.level >= 8) pool.push('charger', 'shield');
+            const type = pool[Math.floor(Math.random() * pool.length)];
             
             // Spawn di pinggir layar
             let x, y;
@@ -1264,17 +1471,19 @@ function gameLoop(timestamp) {
     loot.forEach(l => l.update());
     enemyProjectiles.forEach(ep => ep.update());
     playerProjectiles.forEach(pp => pp.update());
+    bossShockwaves.forEach(bs => bs.update());
 
     particles = particles.filter(p => p.life > 0);
     floatingTexts = floatingTexts.filter(f => f.life > 0);
     enemyProjectiles = enemyProjectiles.filter(ep => ep.life > 0);
     playerProjectiles = playerProjectiles.filter(pp => pp.life > 0);
+    bossShockwaves = bossShockwaves.filter(bs => bs.life > 0);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBackground();
     
     // Sortir urutan gambar dari atas ke bawah Y (Efek 3D / Tumpuk)
-    let renderList = [player, ...enemies, ...loot, ...enemyProjectiles, ...playerProjectiles, ...decorations];
+    let renderList = [player, ...enemies, ...loot, ...enemyProjectiles, ...playerProjectiles, ...bossShockwaves, ...decorations];
     renderList.sort((a, b) => a.y - b.y);
     renderList.forEach(entity => entity.draw(ctx));
     
@@ -1286,10 +1495,11 @@ function gameLoop(timestamp) {
 
 let enemyProjectiles = [];
 let playerProjectiles = [];
+let bossShockwaves = [];
 
 function startGame() {
     player = new Player(canvas.width/2, canvas.height/2);
-    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = []; playerProjectiles = [];
+    enemies = []; particles = []; floatingTexts = []; loot = []; enemyProjectiles = []; playerProjectiles = []; bossShockwaves = [];
     initDecorations();
     decorationsInitialized = true;
     coins = 0; coinText.innerText = coins;

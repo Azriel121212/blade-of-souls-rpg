@@ -10,16 +10,21 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
 
 ## 🎮 Fitur Utama
 
-- **⚔️ 4-Directional Combat, Sword Wave & Parry Mechanic**:
-  - Serangan tebasan pedang berjarak dekat sesuai arah hadap karakter.
-  - **🌊 Sword Wave (Proyektil Energi Sabit)**: Tiap ayunan pedang meluncurkan gelombang sabit energi yang menembus dan menghantam musuh dari jarak jauh (dapat ditingkatkan hingga Triple Wave 3 arah!).
-  - **🌪️ Jangkauan Tebasan (AoE)**: Radius dan lebar tebasan pedang dapat ditingkatkan secara visual dan hitbox-nya.
-  - **🛡️ Invulnerability Frames (i-Frames) & Iron Armor**: Pemain mendapatkan jeda kebal sesaat saat terkena hit agar tidak langsung mati instan saat dikerumuni, serta dapat membeli perlindungan Armor pengurang damage.
-  - **Mekanik Tangkis (Parry)**: Ayunan pedang bisa memantulkan bola sihir musuh kembali ke arah mereka dan memberikan damage balasan x3 lipat!
-- **💀 Variasi Musuh & Boss Battle**:
-  - **Melee Skeleton & Bat**: Mengejar dan menyerang pemain.
-  - **Mage Skeleton**: Menyerang dari jarak jauh menggunakan bola sihir terarah (drop 2 koin).
-  - **Epic Boss Monster**: Muncul setiap kelipatan level 5 dengan animasi sprite sheet lengkap, drop 25 koin, guaranteed heart & sword!
+- **⚔️ 3-Hit Combo, Sword Wave & Parry Mechanic**:
+  - **Sistem 3-Hit Combo**: Ayunan ke-1 & ke-2 adalah tebasan pedang melee cepat; ayunan ke-3 adalah **Finisher Blast** yang melepaskan **Sword Wave (Proyektil Sabit)** berkekuatan tinggi!
+  - **🌊 Sword Wave (Proyektil Energi Sabit)**: Gelombang sabit energi yang menembus musuh, memukul mundur, dan dapat ditingkatkan hingga Triple Wave 3 arah di Shop.
+  - **🌪️ Jangkauan Tebasan (AoE)**: Radius dan lebar tebasan pedang membesar secara visual dan hitbox.
+  - **🛡️ Invulnerability Frames (i-Frames) & Iron Armor**: Jeda kebal sesaat saat terkena hit agar tidak mati instan saat dikerumuni monster.
+  - **Mekanik Tangkis (Parry)**: Ayunan pedang bisa memantulkan bola sihir penyihir kembali ke musuh dengan damage balasan x3 lipat!
+- **💀 Ekosistem Musuh Dinamis & Boss Battle**:
+  - **🛡️ Shield Skeleton**: Membawa perisai di depan yang memantulkan/memblokir proyektil sabit! Harus ditebas dari samping/belakang atau dihancurkan dengan Skill [F].
+  - **🐗 Charger / Dasher**: Musuh agresif yang memberi aba-aba sesaat lalu menerjang cepat (dash rush) lurus ke arah pemain.
+  - **⭐ Elite Monsters (Lvl 6+)**: Muncul dengan aura emas berpendar, ukuran 1.35x, darah 2.5x lipat, tahan knockback, dan menjatuhkan 5 koin saat dikalahkan.
+  - **🧙 Mage Skeleton**: Menyerang jarak jauh dengan proyektil terarah (drop 2 koin).
+  - **🔥 Epic Multi-Phase Boss (Tiap Kelipatan Lvl 5)**:
+    - **Earthquake Stomp**: Menghentak tanah dan merambatkan cincin shockwave merah berbahaya.
+    - **Minion Summon (Fase 50% HP)**: Mengaum dan memanggil 4 skeleton minion pengawal ke arena!
+    - Hadiah kemenangan: 25 Koin, 2 Heart Potion, dan 1 Sword Upgrade.
 - **🌲 Dinamika Lingkungan (Environment)**:
   - Pepohonan, semak-semak, dan bebatuan tersebar acak di arena.
   - Efek transparansi otomatis saat karakter atau musuh berada di balik pepohonan agar tidak menutupi aksi pertempuran.
