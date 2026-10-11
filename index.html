@@ -258,6 +258,11 @@ resizeCanvas();
 
 // Web Audio API SFX
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let screenShake = 0;
+function triggerScreenShake(amount) {
+    screenShake = Math.max(screenShake, amount);
+}
+
 function playSound(type) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -301,6 +306,21 @@ function playSound(type) {
         gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.12);
         osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+    } else if (type === 'parry') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1800, audioCtx.currentTime + 0.04);
+        osc.frequency.exponentialRampToValueAtTime(350, audioCtx.currentTime + 0.16);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.16);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.16);
+    } else if (type === 'shatter') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.09, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.35);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.35);
     }
 }
 
@@ -481,6 +501,8 @@ class PlayerProjectile {
         this.angle = angle;
         this.life = 75; // Jangkauan terbang proyektil (~1.2 detik)
         this.hitEnemies = new Set();
+        this.isBossReflected = false;
+        this.rallyCount = 0;
     }
 
     update() {
@@ -489,11 +511,58 @@ class PlayerProjectile {
         this.life--;
 
         // Jejak partikel energi
-        if (Math.random() < 0.35) {
-            particles.push(new Particle(this.x, this.y, '#38bdf8'));
+        if (this.isBossReflected) {
+            if (Math.random() < 0.5) particles.push(new Particle(this.x, this.y, '#ff0055'));
+        } else if (this.rallyCount > 0) {
+            if (Math.random() < 0.5) particles.push(new Particle(this.x, this.y, '#ffd700'));
+        } else {
+            if (Math.random() < 0.35) particles.push(new Particle(this.x, this.y, '#38bdf8'));
         }
 
-        // Cek tabrakan dengan musuh
+        // JIKA SEDANG DIPARRY BOSS (TERBANG MENUJU PLAYER)
+        if (this.isBossReflected) {
+            const distToPlayer = Math.hypot(this.x - player.x, this.y - player.y);
+            if (distToPlayer < this.size + (player.width / 2) + 14) {
+                // Player melakukan Counter-Parry jika sedang mengayunkan pedang!
+                if (player.isAttacking) {
+                    this.isBossReflected = false;
+                    this.rallyCount++;
+                    this.life = 85;
+                    this.hitEnemies.clear();
+
+                    // Cari target Boss jika ada
+                    const boss = enemies.find(e => e.isBoss && e.hp > 0);
+                    let targetAng = this.angle + Math.PI;
+                    if (boss) {
+                        targetAng = Math.atan2(boss.y - this.y, boss.x - this.x);
+                    }
+
+                    // Escalating speed & damage per rally!
+                    let currentSpeed = Math.min(22, Math.hypot(this.vx, this.vy) * 1.25);
+                    this.vx = Math.cos(targetAng) * currentSpeed;
+                    this.vy = Math.sin(targetAng) * currentSpeed;
+                    this.angle = targetAng;
+                    this.damage = Math.floor(this.damage * 1.5);
+
+                    playSound('parry');
+                    triggerScreenShake(8 + Math.min(10, this.rallyCount * 2));
+                    floatingTexts.push(new FloatingText(player.x, player.y - 30, `PERFECT PARRY! x${this.rallyCount}`, "#ffd700", 20));
+                    for (let p = 0; p < 15; p++) particles.push(new Particle(this.x, this.y, '#ffd700'));
+                    return;
+                } else {
+                    // Kena Player!
+                    player.takeDamage(this.damage);
+                    playSound('hit');
+                    triggerScreenShake(7);
+                    for (let p = 0; p < 8; p++) particles.push(new Particle(this.x, this.y, '#ff0055'));
+                    this.life = 0;
+                    return;
+                }
+            }
+            return; // Jangan tabrak musuh saat proyektil sedang dikontrol boss
+        }
+
+        // Cek tabrakan dengan musuh (Proyektil milik Player)
         for (let i = 0; i < enemies.length; i++) {
             const e = enemies[i];
             if (this.hitEnemies.has(e)) continue;
@@ -501,6 +570,36 @@ class PlayerProjectile {
             const dist = Math.hypot(this.x - e.x, this.y - e.y);
             if (dist < this.size + (e.width / 2)) {
                 this.hitEnemies.add(e);
+
+                // Cek apakah Boss mem-parry proyektil ini!
+                if (e.isBoss && !e.isStaggered && e.bossState !== 'die') {
+                    let parryChance = e.isEnraged ? 0.65 : 0.40;
+                    if (this.rallyCount >= 3) parryChance = 0.25;
+                    if (this.rallyCount >= 6) parryChance = 0.05;
+
+                    if (Math.random() < parryChance) {
+                        this.isBossReflected = true;
+                        this.rallyCount++;
+                        this.life = 85;
+                        this.hitEnemies.clear();
+
+                        // Boss memantulkan proyektil kembali ke arah player!
+                        let toPlayerAng = Math.atan2(player.y - e.y, player.x - e.x);
+                        let currentSpeed = Math.min(20, Math.hypot(this.vx, this.vy) * 1.2);
+                        this.vx = Math.cos(toPlayerAng) * currentSpeed;
+                        this.vy = Math.sin(toPlayerAng) * currentSpeed;
+                        this.angle = toPlayerAng;
+                        this.damage = Math.floor(this.damage * 1.35);
+
+                        playSound('parry');
+                        triggerScreenShake(7 + Math.min(8, this.rallyCount * 2));
+                        floatingTexts.push(new FloatingText(e.x, e.y - 50, "BOSS PARRIED!", "#ff0055", 22));
+                        for (let p = 0; p < 12; p++) particles.push(new Particle(this.x, this.y, '#ff0055'));
+                        e.bossState = 'attack';
+                        e.stateTimer = 0;
+                        return; // Hindari damage karena serangan berhasil diparry Boss!
+                    }
+                }
 
                 // Cek apakah musuh bertameng dan terkena dari arah depan
                 if (e.hasShield) {
@@ -518,6 +617,18 @@ class PlayerProjectile {
                     }
                 }
 
+                // Jika hasil dari Rally, berikan visual & Poise damage masif ke Boss!
+                if (this.rallyCount > 0) {
+                    floatingTexts.push(new FloatingText(e.x, e.y - 35, `RALLY SMASH! x${this.rallyCount}`, "#ffd700", 22));
+                    triggerScreenShake(9);
+                    for (let p = 0; p < 12; p++) particles.push(new Particle(e.x, e.y, '#ffd700'));
+                    if (e.isBoss) {
+                        e.takePoiseDamage(35 + this.rallyCount * 12);
+                    }
+                } else if (e.isBoss) {
+                    e.takePoiseDamage(10);
+                }
+
                 e.takeDamage(this.damage);
                 playSound('hit');
 
@@ -530,7 +641,7 @@ class PlayerProjectile {
 
                 // Percikan efek hit proyektil
                 for (let p = 0; p < 4; p++) {
-                    particles.push(new Particle(e.x, e.y, '#00ffff'));
+                    particles.push(new Particle(e.x, e.y, this.rallyCount > 0 ? '#ffd700' : '#00ffff'));
                 }
 
                 this.pierce--;
@@ -547,12 +658,26 @@ class PlayerProjectile {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // Efek glowing crescent wave
-        ctx.shadowColor = '#00ffff';
-        ctx.shadowBlur = 12;
+        let outerColor = '#38bdf8';
+        let glowColor = '#00ffff';
+        let innerColor = '#ffffff';
 
-        // Sabit luar (cyan)
-        ctx.strokeStyle = '#38bdf8';
+        if (this.isBossReflected) {
+            outerColor = '#ff0055';
+            glowColor = '#ff0033';
+            innerColor = '#ffcc00';
+        } else if (this.rallyCount > 0) {
+            outerColor = '#ffd700';
+            glowColor = '#ffaa00';
+            innerColor = '#ffffff';
+        }
+
+        // Efek glowing crescent wave
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 14;
+
+        // Sabit luar
+        ctx.strokeStyle = outerColor;
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.arc(0, 0, this.size, -Math.PI / 2.8, Math.PI / 2.8);
@@ -560,7 +685,7 @@ class PlayerProjectile {
 
         // Inti putih
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = innerColor;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(0, 0, this.size - 2, -Math.PI / 3.5, Math.PI / 3.5);
@@ -783,8 +908,26 @@ class Player {
             if (enemy.x >= hitbox.x && enemy.x <= hitbox.x + hitbox.w &&
                 enemy.y >= hitbox.y && enemy.y <= hitbox.y + hitbox.h) {
                 
+                // Cek jika musuh adalah Boss dan menangkis serangan melee (Melee Clank!)
+                if (enemy.isBoss && !enemy.isStaggered && enemy.bossState !== 'die' && Math.random() < 0.25) {
+                    playSound('parry');
+                    triggerScreenShake(6);
+                    floatingTexts.push(new FloatingText(enemy.x, enemy.y - 30, "CLANK! BLOCKED", "#ffffff", 18));
+                    for (let p = 0; p < 10; p++) particles.push(new Particle((this.x + enemy.x)/2, (this.y + enemy.y)/2, '#ffffbb'));
+                    // Recoil ke pemain
+                    this.x -= knockX * 0.7;
+                    this.y -= knockY * 0.7;
+                    enemy.takePoiseDamage(12);
+                    return;
+                }
+
                 let comboMultiplier = this.comboStep === 3 ? 1.5 : (this.comboStep === 2 ? 1.2 : 1.0);
                 let dmg = Math.floor((this.attackPower + Math.floor(Math.random() * 5)) * comboMultiplier);
+                
+                if (enemy.isBoss) {
+                    enemy.takePoiseDamage(this.comboStep === 3 ? 18 : 10);
+                }
+
                 enemy.takeDamage(dmg);
                 playSound('hit');
                 let res = enemy.isBoss ? 0.2 : (enemy.isElite ? 0.35 : 1.0);
@@ -842,6 +985,7 @@ class Player {
     superSkill() {
         this.magicCooldown = this.magicCooldownMax;
         playSound('magic');
+        triggerScreenShake(8);
         
         // Visual efek ledakan area ungu raksasa
         for(let j=0; j<30; j++) particles.push(new Particle(this.x, this.y, '#9900ff'));
@@ -855,6 +999,9 @@ class Player {
                 if (e.hasShield) {
                     e.hasShield = false;
                     floatingTexts.push(new FloatingText(e.x, e.y - 25, "SHIELD BROKEN!", "#ff4444", 16));
+                }
+                if (e.isBoss) {
+                    e.takePoiseDamage(50);
                 }
                 // Damage massiv + knockback massiv
                 e.takeDamage(this.attackPower * 4); 
@@ -1111,6 +1258,25 @@ class Enemy {
         this.cooldown = 0;
         this.bossState = 'walk'; // state buat boss (walk, attack, die)
         this.stateTimer = 0;
+        this.poise = 100;
+        this.maxPoise = 100;
+        this.isStaggered = false;
+        this.staggerTimer = 0;
+        this.isEnraged = false;
+    }
+
+    takePoiseDamage(amount) {
+        if (!this.isBoss || this.isStaggered || this.bossState === 'die') return;
+        this.poise = Math.max(0, this.poise - amount);
+        if (this.poise <= 0) {
+            this.isStaggered = true;
+            this.staggerTimer = 160; // ~2.7 detik vulnerability window
+            this.bossState = 'walk';
+            playSound('shatter');
+            triggerScreenShake(10);
+            floatingTexts.push(new FloatingText(this.x, this.y - 65, "GUARD BROKEN! STAGGERED!", "#ffcc00", 24));
+            for (let p = 0; p < 25; p++) particles.push(new Particle(this.x, this.y, '#ffd700'));
+        }
     }
 
     update() {
@@ -1120,6 +1286,38 @@ class Enemy {
                 this.finishDie();
             }
             return; // stop moving
+        }
+
+        // State Boss Tertegun (Staggered / Guard Broken)
+        if (this.isBoss && this.isStaggered) {
+            this.staggerTimer--;
+            if (Math.random() < 0.25) {
+                particles.push(new Particle(this.x + (Math.random() - 0.5) * 35, this.y - 40, '#ffd700'));
+            }
+            if (this.staggerTimer <= 0) {
+                this.isStaggered = false;
+                this.poise = this.maxPoise;
+                floatingTexts.push(new FloatingText(this.x, this.y - 50, "RECOVERED!", "#ffffff", 16));
+            }
+            return; // Diam dan tidak bisa menyerang saat Staggered!
+        }
+
+        // Regenerasi Poise pasif jika tidak diserang
+        if (this.isBoss && !this.isStaggered && this.poise < this.maxPoise && Math.random() < 0.05) {
+            this.poise = Math.min(this.maxPoise, this.poise + 1);
+        }
+
+        // Cek Boss Mengamuk (Enrage Phase saat HP < 30%)
+        if (this.isBoss && !this.isEnraged && this.hp <= this.maxHp * 0.3 && this.bossState !== 'die') {
+            this.isEnraged = true;
+            this.speed *= 1.35;
+            playSound('shatter');
+            triggerScreenShake(12);
+            floatingTexts.push(new FloatingText(this.x, this.y - 75, "🔥 BOSS ENRAGED!!", "#ff0000", 28));
+            for (let p = 0; p < 25; p++) particles.push(new Particle(this.x, this.y, '#ff0000'));
+        }
+        if (this.isBoss && this.isEnraged && Math.random() < 0.35) {
+            particles.push(new Particle(this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50, '#ff3300'));
         }
         
         if (this.isBoss && this.bossState === 'attack') {
@@ -1140,7 +1338,8 @@ class Enemy {
             if (this.bossStompTimer <= 0) {
                 bossShockwaves.push(new BossShockwave(this.x, this.y));
                 playSound('hit');
-                this.bossStompTimer = 420; // reset cooldown (~7s)
+                triggerScreenShake(10);
+                this.bossStompTimer = this.isEnraged ? 210 : 420; // 2x lebih cepat saat Enraged!
             }
 
             // Minion summon di 50% HP
@@ -1250,8 +1449,15 @@ class Enemy {
     takeDamage(amount) {
         if (this.isBoss && this.bossState === 'die') return; // kebal pas mati
         
+        // 2x Critical Damage saat Boss Staggered!
+        if (this.isBoss && this.isStaggered) {
+            amount = Math.floor(amount * 2.0);
+            floatingTexts.push(new FloatingText(this.x, this.y - 35, "CRITICAL 2x!", "#ffd700", 18));
+            triggerScreenShake(5);
+        }
+
         this.hp -= amount;
-        floatingTexts.push(new FloatingText(this.x, this.y - 15, amount, this.isElite ? "#ffaa00" : "#ffffff"));
+        floatingTexts.push(new FloatingText(this.x, this.y - 15, amount, this.isElite ? "#ffaa00" : (this.isBoss ? "#ff3333" : "#ffffff")));
         for(let i=0; i<5; i++) particles.push(new Particle(this.x, this.y, this.color));
         if (this.hp <= 0) {
             if (this.isBoss) {
@@ -1316,6 +1522,13 @@ class Enemy {
             ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
             ctx.beginPath(); ctx.ellipse(0, this.height/2 + 5, this.width/2 + 10, 8, 0, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2.5; ctx.stroke();
+        }
+
+        // Aura Api jika Boss Enraged
+        if (this.isBoss && this.isEnraged) {
+            ctx.fillStyle = 'rgba(255, 30, 0, 0.25)';
+            ctx.beginPath(); ctx.ellipse(0, this.height/2 + 10, this.width/2 + 25, 14, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ff2200'; ctx.lineWidth = 3; ctx.stroke();
         }
 
         // Balik muka (hadap kiri) kalau player di kirinya
@@ -1384,16 +1597,49 @@ class Enemy {
             ctx.fillText(this.emoji, 0, 0);
         }
         
+        // Efek visual Stun / Bintang saat Boss Staggered
+        if (this.isBoss && this.isStaggered) {
+            let stunAngle = Date.now() / 150;
+            ctx.font = "14px Arial"; ctx.textAlign = "center";
+            ctx.fillText("💫", Math.cos(stunAngle) * 14, -58);
+            ctx.fillText("💫", Math.cos(stunAngle + Math.PI) * 14, -58);
+        }
+
         ctx.restore();
 
-        // Health bar enemy
-        const hpPercent = this.hp / this.maxHp;
-        ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 25, 30, 4);
-        ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 15, this.y - 25, 30 * hpPercent, 4);
+        // Health & Status Bar
+        if (this.isBoss) {
+            // Boss HP Bar
+            const hpPercent = Math.max(0, this.hp / this.maxHp);
+            ctx.fillStyle = '#111111'; ctx.fillRect(this.x - 35, this.y - 48, 70, 7);
+            ctx.fillStyle = this.isEnraged ? '#ff2200' : '#ff4444';
+            ctx.fillRect(this.x - 35, this.y - 48, 70 * hpPercent, 7);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.strokeRect(this.x - 35, this.y - 48, 70, 7);
 
-        if (this.isElite) {
-            ctx.font = "8px Arial"; ctx.textAlign = "center";
-            ctx.fillStyle = '#ffd700'; ctx.fillText("★ ELITE", this.x, this.y - 29);
+            // Boss Poise / Posture Bar (Kuning/Oranye)
+            const poisePercent = Math.max(0, this.poise / this.maxPoise);
+            ctx.fillStyle = '#111111'; ctx.fillRect(this.x - 35, this.y - 39, 70, 4);
+            ctx.fillStyle = this.isStaggered ? '#ff0000' : '#ffaa00';
+            ctx.fillRect(this.x - 35, this.y - 39, 70 * poisePercent, 4);
+            ctx.strokeStyle = '#222222'; ctx.lineWidth = 1; ctx.strokeRect(this.x - 35, this.y - 39, 70, 4);
+
+            ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
+            if (this.isStaggered) {
+                ctx.fillStyle = '#ffcc00'; ctx.fillText("STAGGERED (2x DMG)", this.x, this.y - 53);
+            } else if (this.isEnraged) {
+                ctx.fillStyle = '#ff3333'; ctx.fillText("🔥 ENRAGED BOSS", this.x, this.y - 53);
+            } else {
+                ctx.fillStyle = '#ffffff'; ctx.fillText("BOSS", this.x, this.y - 53);
+            }
+        } else {
+            const hpPercent = this.hp / this.maxHp;
+            ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - 25, 30, 4);
+            ctx.fillStyle = '#00ff00'; ctx.fillRect(this.x - 15, this.y - 25, 30 * hpPercent, 4);
+
+            if (this.isElite) {
+                ctx.font = "8px Arial"; ctx.textAlign = "center";
+                ctx.fillStyle = '#ffd700'; ctx.fillText("★ ELITE", this.x, this.y - 29);
+            }
         }
     }
 }
@@ -1479,7 +1725,18 @@ function gameLoop(timestamp) {
     playerProjectiles = playerProjectiles.filter(pp => pp.life > 0);
     bossShockwaves = bossShockwaves.filter(bs => bs.life > 0);
 
+    ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Efek Guncangan Layar (Screen Shake)
+    if (screenShake > 0) {
+        let sx = (Math.random() - 0.5) * screenShake;
+        let sy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(sx, sy);
+        screenShake *= 0.86;
+        if (screenShake < 0.3) screenShake = 0;
+    }
+
     drawBackground();
     
     // Sortir urutan gambar dari atas ke bawah Y (Efek 3D / Tumpuk)
@@ -1489,6 +1746,8 @@ function gameLoop(timestamp) {
     
     particles.forEach(p => p.draw(ctx));
     floatingTexts.forEach(f => f.draw(ctx));
+
+    ctx.restore();
 
     animationId = requestAnimationFrame(gameLoop);
 }

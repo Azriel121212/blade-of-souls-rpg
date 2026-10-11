@@ -21,7 +21,11 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
   - **🐗 Charger / Dasher**: Musuh agresif yang memberi aba-aba sesaat lalu menerjang cepat (dash rush) lurus ke arah pemain.
   - **⭐ Elite Monsters (Lvl 6+)**: Muncul dengan aura emas berpendar, ukuran 1.35x, darah 2.5x lipat, tahan knockback, dan menjatuhkan 5 koin saat dikalahkan.
   - **🧙 Mage Skeleton**: Menyerang jarak jauh dengan proyektil terarah (drop 2 koin).
-  - **🔥 Epic Multi-Phase Boss (Tiap Kelipatan Lvl 5)**:
+    - **⚔️ Boss Parry & Ping-Pong Rally ("Dead Man's Volley")**: Boss dapat menangkis (*parry*) serangan tebasan gelombang energi pemain dan memantulkannya kembali dengan aura merah membara berkecepatan tinggi! Pemain dapat menangkis balik gelombang tersebut secara ritmis (rally) untuk melipatgandakan kecepatan dan damage hingga salah satu terkena telak.
+    - **🛡️ Boss Melee Clank**: Menyerang Boss dari jarak dekat memiliki risiko ditepis (*CLANK!*), menghasilkan percikan logam dan dorongan recoil mundur pada pemain.
+    - **⚡ Sekiro-Style Poise / Stagger Meter**: Boss memiliki bar postur (*Poise*) di bawah bar HP. Memenangkan parry rally atau mendaratkan serangan (terutama Shadow Smash [F]) akan menguras Poise Boss hingga pecah (**GUARD BROKEN! STAGGERED!** selama 2.5 detik, tertegun dan menerima **2x Critical Damage**).
+    - **🔥 Boss Enrage Phase (< 30% HP)**: Saat sekarat, Boss mengamuk dengan aura api merah menyala, kecepatan gerak +35%, dan cooldown serangan Earthquake Stomp 2x lebih cepat.
+    - **💥 Dynamic Screen Shake & Audio**: Getaran layar berbobot dan efek suara denting pedang (*parry ping*) dan *posture shatter*.
     - **Earthquake Stomp**: Menghentak tanah dan merambatkan cincin shockwave merah berbahaya.
     - **Minion Summon (Fase 50% HP)**: Mengaum dan memanggil 4 skeleton minion pengawal ke arena!
     - Hadiah kemenangan: 25 Koin, 2 Heart Potion, dan 1 Sword Upgrade.
