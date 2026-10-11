@@ -23,12 +23,17 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
   - **🧙 Mage Skeleton**: Menyerang jarak jauh dengan proyektil terarah (drop 2 koin).
     - **⚔️ Boss Parry & Ping-Pong Rally ("Dead Man's Volley")**: Boss dapat menangkis (*parry*) serangan tebasan gelombang energi pemain dan memantulkannya kembali dengan aura merah membara berkecepatan tinggi! Pemain dapat menangkis balik gelombang tersebut secara ritmis (rally) untuk melipatgandakan kecepatan dan damage hingga salah satu terkena telak.
     - **🛡️ Boss Melee Clank**: Menyerang Boss dari jarak dekat memiliki risiko ditepis (*CLANK!*), menghasilkan percikan logam dan dorongan recoil mundur pada pemain.
-    - **⚡ Sekiro-Style Poise / Stagger Meter**: Boss memiliki bar postur (*Poise*) di bawah bar HP. Memenangkan parry rally atau mendaratkan serangan (terutama Shadow Smash [F]) akan menguras Poise Boss hingga pecah (**GUARD BROKEN! STAGGERED!** selama 2.5 detik, tertegun dan menerima **2x Critical Damage**).
+  - **⚡ Sekiro-Style Poise / Stagger Meter (Rebalanced)**: Boss memiliki bar postur (*Poise 75*) di bawah bar HP. Memenangkan parry rally atau mendaratkan serangan (terutama Shadow Smash [F]) akan menguras Poise Boss secara agresif hingga pecah (**GUARD BROKEN! STAGGERED!** selama 2.5 detik, tertegun dan menerima **2x Critical Damage**). Poise kini dijamin pecah sebelum Boss mati sehingga pemain dapat menikmati jendela serangan kritikal!
     - **🔥 Boss Enrage Phase (< 30% HP)**: Saat sekarat, Boss mengamuk dengan aura api merah menyala, kecepatan gerak +35%, dan cooldown serangan Earthquake Stomp 2x lebih cepat.
     - **💥 Dynamic Screen Shake & Audio**: Getaran layar berbobot dan efek suara denting pedang (*parry ping*) dan *posture shatter*.
     - **Earthquake Stomp**: Menghentak tanah dan merambatkan cincin shockwave merah berbahaya.
     - **Minion Summon (Fase 50% HP)**: Mengaum dan memanggil 4 skeleton minion pengawal ke arena!
-    - Hadiah kemenangan: 25 Koin, 2 Heart Potion, dan 1 Sword Upgrade.
+    - Hadiah kemenangan: 25 Koin, 2 Heart Potion, 1 Sword Upgrade, dan 1 **Mythic Soul Orb** (+350-500 XP)!
+- **💎 Dynamic Leveling, Kill Streak & Soul Gems (Lvl 10-15+ Flow)**:
+  - **Kurva XP yang Halus**: Kebutuhan XP level tinggi tidak lagi meledak eksponensial (1.4x), melainkan meningkat secara bertahap dan adil sehingga leveling di level 10-20+ tetap cepat dan memuaskan.
+  - **Scaling XP Musuh**: XP yang didapat dari setiap monster otomatis meningkat seiring naiknya level pemain (+14% per level).
+  - **⚡ Kill Streak Momentum**: Membunuh musuh secara beruntun dalam waktu singkat memicu pengganda XP (hingga +100% / 2x XP pada streak 6+).
+  - **💎 Soul Gem & Mythic Orb**: Monster elite dan normal berpeluang menjatuhkan *Soul Gem* (`💎`), dan Boss menjatuhkan *Mythic Soul Orb* (`🔮`) yang otomatis tertarik magnet untuk percepatan XP masif!
 - **🌲 Dinamika Lingkungan (Environment)**:
   - Pepohonan, semak-semak, dan bebatuan tersebar acak di arena.
   - Efek transparansi otomatis saat karakter atau musuh berada di balik pepohonan agar tidak menutupi aksi pertempuran.

@@ -410,14 +410,23 @@ class CoinLoot {
 }
 
 class ItemLoot {
-    constructor(x, y, type) {
-        this.x = x; this.y = y; this.type = type;
+    constructor(x, y, type, value = 0) {
+        this.x = x; this.y = y; this.type = type; this.value = value;
         this.radius = 12; this.vy = -4; 
         this.vx = (Math.random() - 0.5) * 4;
         this.bounce = 2;
+        this.magnetized = false;
     }
     update() {
-        if (this.bounce > 0) {
+        const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+        if (distToPlayer < 110) {
+            this.magnetized = true;
+        }
+        if (this.magnetized) {
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            this.x += Math.cos(angle) * 7.5;
+            this.y += Math.sin(angle) * 7.5;
+        } else if (this.bounce > 0) {
             this.x += this.vx; this.y += this.vy; this.vy += 0.3;
             if (this.vy > 3) { this.vy = -2.5; this.bounce--; this.vx *= 0.5; }
         }
@@ -430,9 +439,20 @@ class ItemLoot {
         ctx.font = "24px Arial"; 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
         ctx.shadowBlur = 10;
-        ctx.fillText(this.type === 'heart' ? "❤️" : "🗡️", this.x, this.y + floatY); 
+        if (this.type === 'heart') {
+            ctx.shadowColor = 'rgba(255, 50, 50, 0.8)';
+            ctx.fillText("❤️", this.x, this.y + floatY);
+        } else if (this.type === 'sword') {
+            ctx.shadowColor = 'rgba(255, 200, 0, 0.8)';
+            ctx.fillText("🗡️", this.x, this.y + floatY);
+        } else if (this.type === 'gem') {
+            ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
+            ctx.fillText("💎", this.x, this.y + floatY);
+        } else if (this.type === 'orb') {
+            ctx.shadowColor = 'rgba(200, 0, 255, 0.9)';
+            ctx.fillText("🔮", this.x, this.y + floatY);
+        }
         ctx.restore();
     }
 }
@@ -623,10 +643,10 @@ class PlayerProjectile {
                     triggerScreenShake(9);
                     for (let p = 0; p < 12; p++) particles.push(new Particle(e.x, e.y, '#ffd700'));
                     if (e.isBoss) {
-                        e.takePoiseDamage(35 + this.rallyCount * 12);
+                        e.takePoiseDamage(45 + this.rallyCount * 18);
                     }
                 } else if (e.isBoss) {
-                    e.takePoiseDamage(10);
+                    e.takePoiseDamage(16);
                 }
 
                 e.takeDamage(this.damage);
@@ -793,11 +813,19 @@ class Player {
         this.magicCooldown = 0; // Cooldown sihir
         this.visualFacing = 'right'; // Untuk arah hadap gambar karakter
         this.aimDirection = 'right'; // Untuk arah tebasan pedang (up, down, left, right)
+
+        // Kill Streak Momentum
+        this.killStreak = 0;
+        this.streakTimer = 0;
     }
 
     update() {
         if (this.hp <= 0) return;
         if (this.invincibleTimer > 0) this.invincibleTimer--;
+        if (this.streakTimer > 0) {
+            this.streakTimer--;
+            if (this.streakTimer === 0) this.killStreak = 0;
+        }
 
         // Movement & Menentukan Arah Tebasan (Aim)
         let dx = 0; let dy = 0;
@@ -863,6 +891,17 @@ class Player {
                     this.attackPower += 2;
                     playSound('coin');
                     floatingTexts.push(new FloatingText(this.x, this.y - 20, "ATK UP!", "#ffaa00", 12));
+                } else if (l.type === 'gem') {
+                    let xpVal = l.value || Math.floor(65 + this.level * 16);
+                    this.gainXp(xpVal);
+                    playSound('coin');
+                    for (let p = 0; p < 8; p++) particles.push(new Particle(this.x, this.y, '#00ffff'));
+                } else if (l.type === 'orb') {
+                    let xpVal = l.value || Math.floor(280 + this.level * 45);
+                    this.gainXp(xpVal);
+                    playSound('level');
+                    triggerScreenShake(5);
+                    for (let p = 0; p < 15; p++) particles.push(new Particle(this.x, this.y, '#ffd700'));
                 }
                 loot.splice(i, 1);
             }
@@ -917,7 +956,7 @@ class Player {
                     // Recoil ke pemain
                     this.x -= knockX * 0.7;
                     this.y -= knockY * 0.7;
-                    enemy.takePoiseDamage(12);
+                    enemy.takePoiseDamage(22);
                     return;
                 }
 
@@ -925,7 +964,7 @@ class Player {
                 let dmg = Math.floor((this.attackPower + Math.floor(Math.random() * 5)) * comboMultiplier);
                 
                 if (enemy.isBoss) {
-                    enemy.takePoiseDamage(this.comboStep === 3 ? 18 : 10);
+                    enemy.takePoiseDamage(this.comboStep === 3 ? 32 : 16);
                 }
 
                 enemy.takeDamage(dmg);
@@ -1001,7 +1040,7 @@ class Player {
                     floatingTexts.push(new FloatingText(e.x, e.y - 25, "SHIELD BROKEN!", "#ff4444", 16));
                 }
                 if (e.isBoss) {
-                    e.takePoiseDamage(50);
+                    e.takePoiseDamage(60);
                 }
                 // Damage massiv + knockback massiv
                 e.takeDamage(this.attackPower * 4); 
@@ -1026,14 +1065,16 @@ class Player {
     gainXp(amount) {
         this.xp += amount;
         floatingTexts.push(new FloatingText(this.x, this.y - 40, `+${amount} XP`, "#00aaff", 12));
-        if (this.xp >= this.maxXp) this.levelUp();
+        while (this.xp >= this.maxXp) {
+            this.levelUp();
+        }
         updateUI();
     }
 
     levelUp() {
         this.level++;
         this.xp -= this.maxXp;
-        this.maxXp = Math.floor(this.maxXp * 1.4);
+        this.maxXp = Math.floor(65 + (this.level * 45) + (Math.pow(this.level, 1.35) * 8));
         this.maxHp += 25; this.hp = this.maxHp; // Full heal bonus!
         this.attackPower += 5;
         
@@ -1217,31 +1258,32 @@ class Enemy {
         this.bossStompTimer = 360;
         this.hasSummonedMinions = false;
         
+        let lvlScale = 1 + (player.level * 0.14);
         if (type === 'slime') {
             this.hp = 25 + (player.level * 6); this.maxHp = this.hp;
             this.speed = 1.0; this.color = '#32cd32';
-            this.xp = 12; this.damage = 6; this.emoji = "🟢";
+            this.xp = Math.floor(14 * lvlScale); this.damage = 6; this.emoji = "🟢";
         } else if (type === 'skeleton') {
             this.hp = 40 + (player.level * 9); this.maxHp = this.hp;
             this.speed = 1.2; this.color = '#dddddd';
-            this.xp = 20; this.damage = 12; this.emoji = "💀";
+            this.xp = Math.floor(22 * lvlScale); this.damage = 12; this.emoji = "💀";
         } else if (type === 'bat') {
             this.hp = 20 + (player.level * 4); this.maxHp = this.hp;
             this.speed = 2.0; this.color = '#8a2be2';
-            this.xp = 15; this.damage = 9; this.emoji = "🦇";
+            this.xp = Math.floor(18 * lvlScale); this.damage = 9; this.emoji = "🦇";
         } else if (type === 'mage') {
             this.hp = 30 + (player.level * 6); this.maxHp = this.hp;
             this.speed = 0.8; this.color = '#ff4400';
-            this.xp = 25; this.damage = 15; this.emoji = "🧙";
+            this.xp = Math.floor(28 * lvlScale); this.damage = 15; this.emoji = "🧙";
         } else if (type === 'shield') {
             this.hp = 55 + (player.level * 10); this.maxHp = this.hp;
             this.speed = 1.0; this.color = '#708090';
-            this.xp = 35; this.damage = 14; this.emoji = "🛡️";
+            this.xp = Math.floor(38 * lvlScale); this.damage = 14; this.emoji = "🛡️";
             this.hasShield = true;
         } else if (type === 'charger') {
             this.hp = 35 + (player.level * 7); this.maxHp = this.hp;
             this.speed = 1.3; this.color = '#ff1493';
-            this.xp = 30; this.damage = 16; this.emoji = "🐗";
+            this.xp = Math.floor(34 * lvlScale); this.damage = 16; this.emoji = "🐗";
         }
 
         // Elite roll jika level >= 6 dan bukan boss
@@ -1250,7 +1292,7 @@ class Enemy {
             this.hp = Math.floor(this.hp * 2.5); this.maxHp = this.hp;
             this.speed *= 1.2;
             this.damage = Math.floor(this.damage * 1.3);
-            this.xp *= 3;
+            this.xp = Math.floor(this.xp * 2.8);
             this.width = Math.floor(this.width * 1.3);
             this.height = Math.floor(this.height * 1.3);
         }
@@ -1258,8 +1300,9 @@ class Enemy {
         this.cooldown = 0;
         this.bossState = 'walk'; // state buat boss (walk, attack, die)
         this.stateTimer = 0;
-        this.poise = 100;
-        this.maxPoise = 100;
+        this.poise = 75;
+        this.maxPoise = 75;
+        this.poiseCooldown = 0;
         this.isStaggered = false;
         this.staggerTimer = 0;
         this.isEnraged = false;
@@ -1267,6 +1310,7 @@ class Enemy {
 
     takePoiseDamage(amount) {
         if (!this.isBoss || this.isStaggered || this.bossState === 'die') return;
+        this.poiseCooldown = 220; // Hentikan regenerasi poise selama 3.6 detik saat terkena hit
         this.poise = Math.max(0, this.poise - amount);
         if (this.poise <= 0) {
             this.isStaggered = true;
@@ -1302,8 +1346,10 @@ class Enemy {
             return; // Diam dan tidak bisa menyerang saat Staggered!
         }
 
-        // Regenerasi Poise pasif jika tidak diserang
-        if (this.isBoss && !this.isStaggered && this.poise < this.maxPoise && Math.random() < 0.05) {
+        // Regenerasi Poise pasif HANYA jika sudah tidak diserang selama 3.6s
+        if (this.poiseCooldown > 0) {
+            this.poiseCooldown--;
+        } else if (this.isBoss && !this.isStaggered && this.poise < this.maxPoise && Math.random() < 0.04) {
             this.poise = Math.min(this.maxPoise, this.poise + 1);
         }
 
@@ -1470,7 +1516,21 @@ class Enemy {
     }
 
     finishDie() {
-        player.gainXp(this.xp);
+        // Kill Streak Momentum XP Bonus
+        player.killStreak++;
+        player.streakTimer = 180; // 3 detik window streak
+        let streakMult = 1.0;
+        if (player.killStreak >= 6) streakMult = 2.0;
+        else if (player.killStreak >= 4) streakMult = 1.6;
+        else if (player.killStreak >= 2) streakMult = 1.25;
+
+        let totalXp = Math.floor(this.xp * streakMult);
+        player.gainXp(totalXp);
+        
+        if (player.killStreak >= 3 && !this.isBoss) {
+            floatingTexts.push(new FloatingText(player.x, player.y - 35, `STREAK x${player.killStreak}! (+${Math.round((streakMult-1)*100)}% XP)`, "#00ffff", 14));
+        }
+
         for(let i=0; i<15; i++) particles.push(new Particle(this.x, this.y, this.color));
         
         // Efek Vampire / Lifesteal saat membunuh musuh
@@ -1481,7 +1541,7 @@ class Enemy {
         }
 
         if (this.isBoss) {
-            // Boss drop 25 koin tersebar + 2 Heart + 1 Sword!
+            // Boss drop 25 koin tersebar + 2 Heart + 1 Sword + 1 Mythic Soul Orb (+350-500 XP)!
             for (let k = 0; k < 5; k++) {
                 let offX = (Math.random() - 0.5) * 60;
                 let offY = (Math.random() - 0.5) * 60;
@@ -1490,21 +1550,25 @@ class Enemy {
             loot.push(new ItemLoot(this.x - 20, this.y, 'heart'));
             loot.push(new ItemLoot(this.x + 20, this.y, 'heart'));
             loot.push(new ItemLoot(this.x, this.y + 20, 'sword'));
-            floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! +25 COINS", "#ffd700", 28));
+            loot.push(new ItemLoot(this.x, this.y - 20, 'orb', Math.floor(350 + player.level * 45)));
+            floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! +25 COINS & MYTHIC ORB", "#ffd700", 26));
         } else if (this.isElite) {
-            // Elite drops 5 coins + high heart drop
+            // Elite drops 5 coins + high heart drop + Soul Gem (+120 XP)
             loot.push(new CoinLoot(this.x, this.y, 5));
-            if (Math.random() < 0.5) loot.push(new ItemLoot(this.x, this.y, 'heart'));
-            floatingTexts.push(new FloatingText(this.x, this.y - 30, "★ ELITE DEFEATED! +5 COINS", "#ffd700", 16));
+            if (Math.random() < 0.5) loot.push(new ItemLoot(this.x - 15, this.y, 'heart'));
+            loot.push(new ItemLoot(this.x + 15, this.y, 'gem', Math.floor(120 + player.level * 18)));
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, "★ ELITE DEFEATED! +5 COINS & GEM", "#ffd700", 16));
         } else {
             // Normal monster drops
             let coinVal = this.type === 'mage' || this.type === 'shield' ? 2 : 1;
             loot.push(new CoinLoot(this.x, this.y, coinVal));
             
             let rand = Math.random();
-            if (rand < 0.15) {
+            if (rand < 0.12) {
+                loot.push(new ItemLoot(this.x, this.y, 'gem')); // 12% chance for XP gem!
+            } else if (rand < 0.22) {
                 loot.push(new ItemLoot(this.x + 10, this.y, 'heart'));
-            } else if (rand < 0.25) {
+            } else if (rand < 0.30) {
                 loot.push(new ItemLoot(this.x - 10, this.y, 'sword'));
             }
         }
@@ -1655,10 +1719,12 @@ function spawnEnemy() {
             enemies = enemies.filter(e => e.isBoss);
             let boss = new Enemy(canvas.width/2, -100, 'skeleton');
             boss.isBoss = true;
-            // Nerf stat Boss biar nggak kemustahilan
-            boss.hp = 200 + player.level * 50; boss.maxHp = boss.hp;
+            // Stat Boss yang seimbang agar poise sempat pecah sebelum HP habis
+            boss.hp = 360 + player.level * 60; boss.maxHp = boss.hp;
             boss.damage = 15 + player.level * 2; 
-            boss.speed = 1.0; boss.xp = 300;
+            boss.speed = 1.0; 
+            boss.xp = 450 + player.level * 65;
+            boss.poise = 75; boss.maxPoise = 75;
             boss.width = 60; boss.height = 60; // hitbox besar
             enemies.push(boss);
             floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "BOSS BATTLE!", "#ff0000", 40));
