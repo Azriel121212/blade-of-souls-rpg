@@ -10,6 +10,23 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
 
 ## 🎮 Fitur Utama
 
+- **🎵 Retro 8-Bit Chiptune BGM (Web Audio API Synthesizer)**:
+  - Musik latar chiptune retro dinamis yang disintesis langsung menggunakan Web Audio API tanpa perlu file audio eksternal (`.mp3` / `.wav`).
+  - Dua tema musik adaptif: **Explore Theme** (melodi petualangan santai saat menjelajah) dan **Boss Battle Theme** (tempo cepat, arpeggio agresif, dan drum kick/snare yang intens).
+  - Dilengkapi tombol toggle `🔊 BGM` / `🔇 MUTED` di HUD kanan atas.
+- **⚡ Quick Dash / Dodge Roll (<kbd>Shift</kbd> / Tombol Mobile)**:
+  - Mekanik menghindar berkecepatan 3x burst speed lengkap dengan efek bayangan clone (*Ghost Trail*) berpendar cyan dan debu partikel.
+  - Memberikan **Invulnerability Frames (i-Frames)** penuh selama manuver dash untuk menembus kepungan musuh dan proyektil.
+  - Memiliki meteran cooldown responsif di layar HUD (`DASH [SHIFT]`).
+- **👑 Epic Top Boss HUD Bar (Elden Ring / Dark Souls Style)**:
+  - Bar darah widescreen megah di bagian atas layar dengan nama dinamis para Boss legendaris (*Lord Malakor Void Titan*, *Baron Ignis Flame Warden*, *King Oblivion Soul Eater*).
+  - Menampilkan bar HP merah gradient dan bar Poise kuning Sekiro-style secara berdampingan.
+  - Dilengkapi indikator lencana status pertempuran real-time seperti `💥 GUARD BROKEN!` dan `🔥 ENRAGED!`.
+- **🗺️ Arena & Biome Progression (Perpindahan Lantai Dinamis)**:
+  - Menghabisi Boss akan memicu transisi arena ke lantai berikutnya secara mulus disertai banner pengumuman:
+    - **Floor 1: Whispering Forest** (lantai rumput hijau subur, pepohonan rimbun, semak belukar).
+    - **Floor 2: Ancient Catacombs** (lantai ubin batu purba gelap `#15161d`, pilar-pilar batu berukir rune bercahaya cyan, obor menyala dengan api berkedip real-time).
+    - **Floor 3: Volcanic Abyss** (kerak basalt lahar membara `#1a0b0b`, rekahan magma menyala, kristal obsidian tajam, dan kawah kawah geyser lava berbuih).
 - **⚔️ 3-Hit Combo, Sword Wave & Parry Mechanic**:
   - **Sistem 3-Hit Combo**: Ayunan ke-1 & ke-2 adalah tebasan pedang melee cepat; ayunan ke-3 adalah **Finisher Blast** yang melepaskan **Sword Wave (Proyektil Sabit)** berkekuatan tinggi!
   - **🌊 Sword Wave (Proyektil Energi Sabit)**: Gelombang sabit energi yang menembus musuh, memukul mundur, dan dapat ditingkatkan hingga Triple Wave 3 arah di Shop.
@@ -35,17 +52,13 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
   - **⚡ Kill Streak Momentum**: Membunuh musuh secara beruntun dalam waktu singkat memicu pengganda XP (hingga +100% / 2x XP pada streak 6+).
   - **💎 Soul Gem & Mythic Orb**: Monster elite dan normal berpeluang menjatuhkan *Soul Gem* (`💎`), dan Boss menjatuhkan *Mythic Soul Orb* (`🔮`) yang otomatis tertarik magnet untuk percepatan XP masif!
 - **🌲 Dinamika Lingkungan (Environment)**:
-  - Pepohonan, semak-semak, dan bebatuan tersebar acak di arena.
-  - Efek transparansi otomatis saat karakter atau musuh berada di balik pepohonan agar tidak menutupi aksi pertempuran.
+  - Pepohonan, pilar, obor, kristal obsidian, geyser lava, dan bebatuan menyesuaikan tema Biome yang aktif.
+  - Efek transparansi otomatis saat karakter atau musuh berada di balik objek tinggi agar tidak menutupi aksi pertempuran.
 - **🏪 Blacksmith Shop & Ekonomi Koin**:
   - 7 Pilihan Upgrade lengkap: Health Potion, Max HP Boost, Attack Damage, Sword Wave Proyektil, Blade Reach (AoE), Iron Armor (Def), dan Vampire Rune (Lifesteal HP per kill).
 - **📱 Dukungan Desktop & Mobile**:
   - Kontrol keyboard responsif di PC/Laptop.
-  - Tombol virtual D-Pad dan Action Button yang otomatis aktif di layar smartphone / perangkat sentuh.
-- **✨ Visual & Efek Partikel**:
-  - Tebasan glowing neon cyan & white core yang membesar sesuai level upgrade.
-  - Floating damage text (merah untuk damage player, kuning untuk damage musuh, hijau untuk heal/vampire, ungu untuk parry).
-  - Partikel percikan darah, pecahan proyektil, dan transisi bar HP/XP yang halus.
+  - Tombol virtual D-Pad dan Action Button (ATK & DASH) yang otomatis aktif di layar smartphone / perangkat sentuh.
 
 ---
 
@@ -55,14 +68,17 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
 | Tombol | Aksi |
 | :--- | :--- |
 | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / Tombol Panah | Bergerak (Atas, Kiri, Bawah, Kanan) |
-| <kbd>Space</kbd> | Serang dengan Pedang (Sesuai arah hadap) |
-| <kbd>F</kbd> | Dash / Skill Khusus |
+| <kbd>Space</kbd> | Serang Pedang & Wave Proyektil (Sesuai arah hadap) |
+| <kbd>Shift</kbd> | **Quick Dash / Dodge Roll** (i-Frames & Ghost Trail) |
+| <kbd>F</kbd> | Super Magic Skill (AoE Nova) |
 | <kbd>B</kbd> | Buka / Tutup Upgrade Shop |
 
 ### Mobile (Touchscreen)
 - **D-Pad (Kiri bawah)**: Navigasi gerakan karakter.
-- **Tombol ATK (Kanan bawah)**: Serang.
+- **Tombol DASH (Kanan bawah)**: Dash Dodge Roll kilat dengan i-frames.
+- **Tombol ATK (Kanan bawah)**: Serang dengan pedang.
 - **Tombol SHOP (Kanan atas)**: Akses upgrade shop.
+- **Tombol 🔊 BGM (Kanan atas)**: Mute / Unmute musik latar.
 
 ---
 
