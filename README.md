@@ -22,11 +22,12 @@ Sebuah game top-down 2D Action RPG bertema retro yang dibangun menggunakan **HTM
   - Bar darah widescreen megah di bagian atas layar dengan nama dinamis para Boss legendaris (*Lord Malakor Void Titan*, *Baron Ignis Flame Warden*, *King Oblivion Soul Eater*).
   - Menampilkan bar HP merah gradient dan bar Poise kuning Sekiro-style secara berdampingan.
   - Dilengkapi indikator lencana status pertempuran real-time seperti `💥 GUARD BROKEN!` dan `🔥 ENRAGED!`.
-- **🗺️ Arena & Biome Progression (Perpindahan Lantai Dinamis)**:
-  - Menghabisi Boss akan memicu transisi arena ke lantai berikutnya secara mulus disertai banner pengumuman:
-    - **Floor 1: Whispering Forest** (lantai rumput hijau subur, pepohonan rimbun, semak belukar).
-    - **Floor 2: Ancient Catacombs** (lantai ubin batu purba gelap `#15161d`, pilar-pilar batu berukir rune bercahaya cyan, obor menyala dengan api berkedip real-time).
-    - **Floor 3: Volcanic Abyss** (kerak basalt lahar membara `#1a0b0b`, rekahan magma menyala, kristal obsidian tajam, dan kawah kawah geyser lava berbuih).
+- **🗺️ Arena & Biome Progression (Perpindahan Lantai Tiap 25 Level)**:
+  - Mengalahkan Boss tiap kelipatan 5 level memunculkan **Sub-Guardians / Mini-Bosses**, dan di level 25, 50, 75, 100 memunculkan **Apex Floor Overlords** yang membuka gerbang ke lantai berikutnya:
+    - **Floor 1: Whispering Forest (Level 1 - 25)**: Lantai rumput hijau subur, pepohonan rimbun, semak belukar. Apex Boss: *Lord Malakor, Void Titan*.
+    - **Floor 2: Ancient Catacombs (Level 26 - 50)**: Lantai ubin batu purba gelap `#15161d`, pilar batu berukir rune cyan, obor menyala dengan api berkedip real-time. Apex Boss: *Baron Ignis, Flame Warden*.
+    - **Floor 3: Volcanic Abyss (Level 51 - 75)**: Kerak basalt lahar membara `#1a0b0b`, rekahan magma menyala, kristal obsidian tajam, dan kawah geyser lava berbuih. Apex Boss: *King Oblivion, Soul Eater*.
+    - **Floor 4: Frozen Astral Void (Level 76+)**: Kegelapan kosmik es astral `#0d1326`, formasi kristal es beku bercahaya cyan, dan obelisk rune mistis ungu. Apex Boss: *Seraph of the Void*.
 - **⚔️ 3-Hit Combo, Sword Wave & Parry Mechanic**:
   - **Sistem 3-Hit Combo**: Ayunan ke-1 & ke-2 adalah tebasan pedang melee cepat; ayunan ke-3 adalah **Finisher Blast** yang melepaskan **Sword Wave (Proyektil Sabit)** berkekuatan tinggi!
   - **🌊 Sword Wave (Proyektil Energi Sabit)**: Gelombang sabit energi yang menembus musuh, memukul mundur, dan dapat ditingkatkan hingga Triple Wave 3 arah di Shop.

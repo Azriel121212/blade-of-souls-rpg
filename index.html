@@ -1460,7 +1460,7 @@ const BIOMES = {
         id: 'forest',
         floorNum: 1,
         name: "WHISPERING FOREST",
-        subtitle: "Floor 1 • Ancient Canopy",
+        subtitle: "Floor 1 • Ancient Canopy (Level 1 - 25)",
         bg: "#24381c",
         patch: "#2d4b23",
         patchType: "grass"
@@ -1469,7 +1469,7 @@ const BIOMES = {
         id: 'catacombs',
         floorNum: 2,
         name: "ANCIENT CATACOMBS",
-        subtitle: "Floor 2 • Crypt of the Fallen",
+        subtitle: "Floor 2 • Crypt of the Fallen (Level 26 - 50)",
         bg: "#15161d",
         patch: "#232633",
         patchType: "tile"
@@ -1478,10 +1478,19 @@ const BIOMES = {
         id: 'volcano',
         floorNum: 3,
         name: "VOLCANIC ABYSS",
-        subtitle: "Floor 3 • Magma Core",
+        subtitle: "Floor 3 • Magma Core (Level 51 - 75)",
         bg: "#1a0b0b",
         patch: "#2b1212",
         patchType: "magma"
+    },
+    citadel: {
+        id: 'citadel',
+        floorNum: 4,
+        name: "FROZEN ASTRAL VOID",
+        subtitle: "Floor 4 • Citadel of the Stars (Level 76+)",
+        bg: "#0d1326",
+        patch: "#1e294b",
+        patchType: "frost"
     }
 };
 
@@ -1614,6 +1623,25 @@ class Decoration {
             ctx.beginPath(); ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = '#ffcc00';
             ctx.beginPath(); ctx.ellipse(0, 0, 6 + pulse * 2, 3 + pulse, 0, 0, Math.PI*2); ctx.fill();
+        } else if (this.type === 'frost_spire') {
+            // Glacial Cyan Ice Crystal
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.beginPath(); ctx.ellipse(0, 6, 18, 9, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#0c4a6e';
+            ctx.beginPath(); ctx.moveTo(0, -70); ctx.lineTo(12, -18); ctx.lineTo(7, 0); ctx.lineTo(-7, 0); ctx.lineTo(-12, -18); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath(); ctx.moveTo(0, -70); ctx.lineTo(12, -18); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#bae6fd';
+            ctx.beginPath(); ctx.moveTo(0, -70); ctx.lineTo(-2, -35); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill();
+        } else if (this.type === 'obelisk') {
+            // Astral Rune Obelisk
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath(); ctx.ellipse(0, 6, 16, 8, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#1e1b4b'; ctx.fillRect(-8, -50, 16, 50);
+            ctx.fillStyle = '#312e81'; ctx.fillRect(-6, -50, 4, 50);
+            ctx.fillStyle = '#a855f7'; ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 10;
+            ctx.fillRect(-2, -35, 4, 8); ctx.fillRect(-4, -33, 8, 4);
+            ctx.shadowBlur = 0;
         }
         
         ctx.restore();
@@ -1660,6 +1688,18 @@ function initDecorations() {
             let x = Math.random() * (canvas.width - 120) + 60;
             let y = Math.random() * (canvas.height - 120) + 60;
             decorations.push(new Decoration(x, y, 'geyser'));
+        }
+        for (let i = 0; i < 8; i++) decorations.push(new Decoration(Math.random() * canvas.width, Math.random() * canvas.height, 'rock'));
+    } else if (bKey === 'citadel') {
+        for (let i = 0; i < 16; i++) {
+            let x = Math.random() * canvas.width;
+            let y = Math.random() * canvas.height;
+            decorations.push(new Decoration(x, y, 'frost_spire'));
+        }
+        for (let i = 0; i < 10; i++) {
+            let x = Math.random() * (canvas.width - 120) + 60;
+            let y = Math.random() * (canvas.height - 120) + 60;
+            decorations.push(new Decoration(x, y, 'obelisk'));
         }
         for (let i = 0; i < 8; i++) decorations.push(new Decoration(Math.random() * canvas.width, Math.random() * canvas.height, 'rock'));
     }
@@ -1990,12 +2030,13 @@ class Enemy {
             // Switch BGM back to explore
             setBGMMode('explore');
 
-            // Biome Progression Shift!
-            let floorTier = Math.floor(player.level / 5);
-            if (floorTier === 1) {
+            // Biome Progression Shift tiap 25 Level!
+            if (player.level >= 25 && player.level < 50 && currentBiomeKey !== 'catacombs') {
                 setBiome('catacombs');
-            } else if (floorTier >= 2) {
+            } else if (player.level >= 50 && player.level < 75 && currentBiomeKey !== 'volcano') {
                 setBiome('volcano');
+            } else if (player.level >= 75 && currentBiomeKey !== 'citadel') {
+                setBiome('citadel');
             }
         } else if (this.isElite) {
             // Elite drops 5 coins + high heart drop + Soul Gem (+120 XP)
@@ -2165,15 +2206,43 @@ function spawnEnemy() {
             let boss = new Enemy(canvas.width/2, -100, 'skeleton');
             boss.isBoss = true;
 
-            const bossRoster = [
-                { name: "💀 LORD MALAKOR, VOID TITAN", badge: "FLOOR 1 GUARDIAN" },
-                { name: "🔥 BARON IGNIS, FLAME WARDEN", badge: "FLOOR 2 OVERLORD" },
-                { name: "👁️ KING OBLIVION, SOUL EATER", badge: "FLOOR 3 HARBINGER" }
-            ];
-            let bIdx = Math.floor(player.level / 5) - 1;
-            let bInfo = bossRoster[bIdx % bossRoster.length] || { name: "👹 ANCIENT TITAN", badge: `TIER ${bIdx + 1}` };
-            boss.name = bInfo.name;
-            boss.badge = bInfo.badge;
+            let bossName = "👹 ANCIENT TITAN";
+            let bossBadge = "MINI-BOSS";
+
+            if (player.level % 25 === 0) {
+                // APEX FLOOR OVERLORD
+                if (player.level === 25) {
+                    bossName = "💀 LORD MALAKOR, VOID TITAN";
+                    bossBadge = "FLOOR 1 APEX OVERLORD";
+                } else if (player.level === 50) {
+                    bossName = "🔥 BARON IGNIS, FLAME WARDEN";
+                    bossBadge = "FLOOR 2 APEX OVERLORD";
+                } else if (player.level === 75) {
+                    bossName = "👁️ KING OBLIVION, SOUL EATER";
+                    bossBadge = "FLOOR 3 APEX OVERLORD";
+                } else {
+                    bossName = "✨ SERAPH OF THE VOID";
+                    bossBadge = "CELESTIAL APEX OVERLORD";
+                }
+            } else {
+                // Sub-Guardians / Mini-Bosses
+                const subRoster = [
+                    { name: "🐺 SHADOW BONE HOUND", badge: "SUB-GUARDIAN" },
+                    { name: "🏹 GRAVE HUNTER REX", badge: "SUB-GUARDIAN" },
+                    { name: "🌿 CORRUPTED TREANT", badge: "GROVE GUARDIAN" },
+                    { name: "⚔️ DREAD KNIGHT COMMANDER", badge: "GATEKEEPER" },
+                    { name: "💀 CRYPT NECROLORD", badge: "CRYPT OVERSEER" },
+                    { name: "🦇 ELDER VAMPIRE NOBLE", badge: "BLOOD LORD" },
+                    { name: "🌋 OBSIDIAN COLOSSUS", badge: "MAGMA BRUTE" },
+                    { name: "🔥 HELLFIRE FIEND", badge: "INFERNAL SCOUT" }
+                ];
+                let sIdx = (Math.floor(player.level / 5) - 1) % subRoster.length;
+                bossName = subRoster[sIdx].name;
+                bossBadge = subRoster[sIdx].badge;
+            }
+
+            boss.name = bossName;
+            boss.badge = bossBadge;
 
             // Stat Boss yang seimbang agar poise sempat pecah sebelum HP habis
             boss.hp = 360 + player.level * 60; boss.maxHp = boss.hp;
@@ -2242,6 +2311,14 @@ function drawBackground() {
                 ctx.fillStyle = 'rgba(255, 65, 0, 0.45)';
                 ctx.fillRect(gx + 2, gy + 1, 8, 2);
                 ctx.fillStyle = biome.patch;
+            }
+        } else if (biome.patchType === 'frost') {
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(gx, gy, 20, 20);
+            if (i % 2 === 0) {
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+                ctx.fillRect(gx + 2, gy + 2, 16, 16);
             }
         }
     }
