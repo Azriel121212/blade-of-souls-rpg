@@ -12,11 +12,9 @@
         .pixel-font { font-family: 'Press Start 2P', cursive; }
         .bar-transition { transition: width 0.2s ease-out; }
 
-        /* Sembunyikan kontrol sentuh HANYA jika device memakai mouse / non-touchscreen */
-        @media (hover: hover) and (pointer: fine) and (min-width: 1025px) {
-            #mobile-controls {
-                display: none !important;
-            }
+        /* Kontrol layar responsif di semua platform (Laptop/PC & Mobile) */
+        #mobile-controls {
+            display: flex;
         }
     </style>
 </head>
@@ -42,12 +40,12 @@
                     <div id="xp-bar" class="h-full bg-blue-500 bar-transition w-0"></div>
                 </div>
             </div>
-            <!-- Compact Skill & Dash Cooldown Strip -->
-            <div class="flex items-center gap-1.5 mt-0.5">
+            <!-- Compact Skill & Dash Cooldown Strip (Clickable on PC & Mobile) -->
+            <div class="flex items-center gap-1.5 mt-0.5 pointer-events-auto">
                 <!-- Skill Mini Bar -->
-                <div class="flex-1 bg-gray-900/80 px-2 py-1 rounded pixel-font text-white border border-purple-500/80 shadow">
+                <div id="hud-skill-btn" class="flex-1 bg-gray-900/90 hover:bg-gray-800 px-2 py-1 rounded pixel-font text-white border border-purple-500/80 shadow cursor-pointer transition hover:scale-[1.02]" title="Super Magic AoE (Press F)">
                     <div class="flex justify-between items-center text-[7px] sm:text-[8px] mb-0.5">
-                        <span class="text-purple-300">SKILL</span>
+                        <span class="text-purple-300 flex items-center gap-1">🔮 SKILL <span class="text-yellow-300 font-bold bg-purple-950 px-1 py-0.5 rounded border border-purple-400/60 leading-none">[F]</span></span>
                         <span id="skill-text" class="text-purple-300">READY!</span>
                     </div>
                     <div class="w-full h-1.5 bg-gray-800 rounded overflow-hidden">
@@ -55,9 +53,9 @@
                     </div>
                 </div>
                 <!-- Dash Mini Bar -->
-                <div class="flex-1 bg-gray-900/80 px-2 py-1 rounded pixel-font text-white border border-cyan-500/80 shadow">
+                <div id="hud-dash-btn" class="flex-1 bg-gray-900/90 hover:bg-gray-800 px-2 py-1 rounded pixel-font text-white border border-cyan-500/80 shadow cursor-pointer transition hover:scale-[1.02]" title="Dodge Dash Roll (Press SHIFT)">
                     <div class="flex justify-between items-center text-[7px] sm:text-[8px] mb-0.5">
-                        <span class="text-cyan-300">DASH</span>
+                        <span class="text-cyan-300 flex items-center gap-1">⚡ DASH <span class="text-yellow-300 font-bold bg-cyan-950 px-1 py-0.5 rounded border border-cyan-400/60 leading-none">[SHIFT]</span></span>
                         <span id="dash-text" class="text-cyan-300">READY!</span>
                     </div>
                     <div class="w-full h-1.5 bg-gray-800 rounded overflow-hidden">
@@ -70,6 +68,9 @@
         <!-- Stats Kanan: Level, Koin & Audio -->
         <div class="flex flex-col items-end gap-2 text-white pixel-font text-xs text-shadow pointer-events-auto">
             <div class="flex items-center gap-1.5">
+                <button id="btn-toggle-controls" class="bg-gray-800/80 hover:bg-gray-700 px-2 py-1 rounded border-2 border-gray-600 text-[10px] cursor-pointer" title="Toggle On-Screen Buttons">
+                    🎮 BTNS
+                </button>
                 <button id="btn-pause" class="bg-gray-800/80 hover:bg-gray-700 px-2 py-1 rounded border-2 border-gray-600 text-[10px] cursor-pointer" title="Pause (P)">
                     ⏸️
                 </button>
@@ -117,34 +118,49 @@
     <!-- Canvas Utama -->
     <canvas id="gameCanvas" class="block w-full h-full"></canvas>
 
-    <!-- Kontrol Sentuh (Mobile) -->
+    <!-- Kontrol Layar & Sentuh (Dukungan Dual Platform: Laptop & HP) -->
     <div id="mobile-controls" class="absolute bottom-2 sm:bottom-4 left-0 w-full px-3 sm:px-6 flex justify-between items-end z-20 pointer-events-none select-none">
         <!-- D-Pad Kiri -->
         <div class="grid grid-cols-3 gap-1.5 sm:gap-2 w-28 h-28 sm:w-32 sm:h-32 pointer-events-auto">
             <div></div>
-            <button id="btn-up" class="bg-gray-800/75 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex items-center justify-center text-white pb-1 text-sm shadow-lg">▲</button>
+            <button id="btn-up" class="bg-gray-800/80 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex flex-col items-center justify-center text-white text-xs shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer">
+                <span>▲</span>
+                <span class="text-[7px] text-yellow-300 font-bold leading-none">W</span>
+            </button>
             <div></div>
-            <button id="btn-left" class="bg-gray-800/75 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex items-center justify-center text-white pb-1 text-sm shadow-lg">◀</button>
-            <div class="bg-gray-900/40 rounded-full"></div>
-            <button id="btn-right" class="bg-gray-800/75 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex items-center justify-center text-white pb-1 text-sm shadow-lg">▶</button>
+            <button id="btn-left" class="bg-gray-800/80 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex flex-col items-center justify-center text-white text-xs shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer">
+                <span>◀</span>
+                <span class="text-[7px] text-yellow-300 font-bold leading-none">A</span>
+            </button>
+            <div class="bg-gray-900/40 rounded-full flex items-center justify-center text-[7px] text-gray-500 pixel-font">MOVE</div>
+            <button id="btn-right" class="bg-gray-800/80 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex flex-col items-center justify-center text-white text-xs shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer">
+                <span>▶</span>
+                <span class="text-[7px] text-yellow-300 font-bold leading-none">D</span>
+            </button>
             <div></div>
-            <button id="btn-down" class="bg-gray-800/75 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex items-center justify-center text-white pb-1 text-sm shadow-lg">▼</button>
+            <button id="btn-down" class="bg-gray-800/80 active:bg-cyan-600 rounded-full border-2 border-gray-600 flex flex-col items-center justify-center text-white text-xs shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer">
+                <span>▼</span>
+                <span class="text-[7px] text-yellow-300 font-bold leading-none">S</span>
+            </button>
             <div></div>
         </div>
         
-        <!-- Tombol Aksi Kanan (SKILL, DASH, ATK) -->
+        <!-- Tombol Aksi Kanan (SKILL, DASH, ATK) dengan Indikator Keyboard Dual Platform -->
         <div class="flex items-end gap-2 mb-1 pointer-events-auto">
-            <button id="btn-skill" class="w-12 h-12 sm:w-14 sm:h-14 bg-purple-700/85 rounded-full active:bg-purple-500 border-2 border-purple-400 flex flex-col items-center justify-center text-white font-bold pixel-font shadow-lg">
-                <span class="text-xs">🔮</span>
-                <span class="text-[7px]">SKILL</span>
+            <button id="btn-skill" class="w-13 h-13 sm:w-16 sm:h-16 p-1 bg-purple-700/85 hover:bg-purple-600 rounded-full active:bg-purple-500 border-2 border-purple-400 flex flex-col items-center justify-center text-white font-bold pixel-font shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer" title="Super Magic AoE (Press F)">
+                <span class="text-xs sm:text-sm">🔮</span>
+                <span class="text-[7px] sm:text-[8px]">SKILL</span>
+                <span class="text-[6px] sm:text-[7px] text-yellow-300 bg-black/60 px-1 rounded border border-purple-400/50 mt-0.5 font-bold">[F]</span>
             </button>
-            <button id="btn-dash" class="w-12 h-12 sm:w-14 sm:h-14 bg-cyan-700/85 rounded-full active:bg-cyan-500 border-2 border-cyan-400 flex flex-col items-center justify-center text-white font-bold pixel-font shadow-lg">
-                <span class="text-xs">⚡</span>
-                <span class="text-[7px]">DASH</span>
+            <button id="btn-dash" class="w-13 h-13 sm:w-16 sm:h-16 p-1 bg-cyan-700/85 hover:bg-cyan-600 rounded-full active:bg-cyan-500 border-2 border-cyan-400 flex flex-col items-center justify-center text-white font-bold pixel-font shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer" title="Dodge Dash Roll (Press SHIFT)">
+                <span class="text-xs sm:text-sm">⚡</span>
+                <span class="text-[7px] sm:text-[8px]">DASH</span>
+                <span class="text-[6px] sm:text-[7px] text-yellow-300 bg-black/60 px-1 rounded border border-cyan-400/50 mt-0.5 font-bold">[SHIFT]</span>
             </button>
-            <button id="btn-attack" class="w-16 h-16 sm:w-18 sm:h-18 bg-red-600/90 rounded-full active:bg-red-500 border-2 border-red-400 flex flex-col items-center justify-center text-white font-bold pixel-font shadow-xl">
-                <span class="text-sm">⚔️</span>
-                <span class="text-[9px]">ATK</span>
+            <button id="btn-attack" class="w-16 h-16 sm:w-20 sm:h-20 p-1 bg-red-600/90 hover:bg-red-500 rounded-full active:bg-red-400 border-2 border-red-400 flex flex-col items-center justify-center text-white font-bold pixel-font shadow-xl transition hover:scale-105 active:scale-95 cursor-pointer" title="Attack (Press SPACE)">
+                <span class="text-sm sm:text-base">⚔️</span>
+                <span class="text-[8px] sm:text-[9px]">ATK</span>
+                <span class="text-[7px] text-yellow-300 bg-black/60 px-1 rounded border border-red-400/50 mt-0.5 font-bold">[SPACE]</span>
             </button>
         </div>
     </div>
@@ -332,15 +348,15 @@ function drawSpriteProportional(ctx, img, pX, pY, pW, pH, dx, dy, dw, dh) {
 
 let decorationsInitialized = false;
 
+let showOnScreenControls = true;
+
 // Resize Canvas
 function resizeCanvas() {
     const container = document.getElementById('game-container');
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
     
-    // Deteksi otomatis layar sentuh / mobile
-    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 1024;
-    if (isTouch && mobileControls) {
+    if (mobileControls && showOnScreenControls) {
         mobileControls.classList.remove('hidden');
         mobileControls.style.display = 'flex';
     }
@@ -2513,9 +2529,9 @@ class Enemy {
             this.speed = 1.25; this.color = '#dddddd';
             this.xp = Math.floor(16 * lvlScale); this.damage = 14 + Math.floor(player.level * 1.2); this.emoji = "💀";
         } else if (type === 'bat') {
-            this.hp = 28 + (player.level * 5); this.maxHp = this.hp;
-            this.speed = 2.1; this.color = '#8a2be2';
-            this.xp = Math.floor(12 * lvlScale); this.damage = 10 + Math.floor(player.level * 0.9); this.emoji = "🦇";
+            this.hp = 24 + (player.level * 4); this.maxHp = this.hp;
+            this.speed = 1.35; this.color = '#8a2be2'; // Kecepatan disesuaikan ke 1.35 (sebelumnya 2.1 terlalu cepat)
+            this.xp = Math.floor(12 * lvlScale); this.damage = 8 + Math.floor(player.level * 0.8); this.emoji = "🦇";
         } else if (type === 'mage') {
             this.hp = 42 + (player.level * 8); this.maxHp = this.hp;
             this.speed = 0.95; this.color = '#ff4400';
@@ -2526,9 +2542,10 @@ class Enemy {
             this.xp = Math.floor(24 * lvlScale); this.damage = 15 + Math.floor(player.level * 1.2); this.emoji = "🛡️";
             this.hasShield = true;
         } else if (type === 'charger') {
-            this.hp = 48 + (player.level * 10); this.maxHp = this.hp;
-            this.speed = 1.35; this.color = '#ff1493';
-            this.xp = Math.floor(22 * lvlScale); this.damage = 18 + Math.floor(player.level * 1.4); this.emoji = "🐗";
+            this.hp = 38 + (player.level * 7); this.maxHp = this.hp;
+            this.speed = 1.15; this.color = '#ff1493'; // Gerak santai sebelum dash
+            this.xp = Math.floor(20 * lvlScale); this.damage = 14 + Math.floor(player.level * 1.1); this.emoji = "🦇";
+            this.dashCooldown = 150; // Jeda awal 2.5 detik sebelum boleh dash pertama kali
         }
 
         // Elite roll jika level >= 6 dan bukan boss
@@ -2543,6 +2560,7 @@ class Enemy {
         }
 
         this.cooldown = 0;
+        this.dashCooldown = 0;
         this.bossState = 'walk'; // state buat boss (walk, attack, die)
         this.stateTimer = 0;
         this.poise = 75;
@@ -2699,42 +2717,63 @@ class Enemy {
             return;
         }
 
-        // Perilaku Charger / Dasher
+        // Perilaku Charger / Dasher (Kelelawar Dash dengan Telegraph & Delay Wajar)
         if (this.type === 'charger') {
+            if (this.dashCooldown > 0) this.dashCooldown--;
+
             if (this.chargeState === 'walk') {
                 if (dist > 5) {
                     this.x += (dx / dist) * moveSpeed;
                     this.y += (dy / dist) * moveSpeed;
                 }
-                if (dist < 220 && dist > 60 && Math.random() < 0.02) {
+                // HANYA boleh dash jika dashCooldown habis dan jarak pas (70-220px)
+                if (this.dashCooldown === 0 && dist < 220 && dist > 70 && Math.random() < 0.025) {
                     this.chargeState = 'windup';
-                    this.chargeTimer = 18;
+                    this.chargeTimer = 65; // ~1.1 detik delay persiapan yang jelas & cukup lama
                     this.dashDir = { x: dx / dist, y: dy / dist };
-                    floatingTexts.push(new FloatingText(this.x, this.y - 20, "!", "#ff1493", 22));
+                    floatingTexts.push(new FloatingText(this.x, this.y - 28, "⚠️ CHARGE!", "#ff0055", 16));
+                    playSound('wave');
                 }
             } else if (this.chargeState === 'windup') {
-                this.x += (Math.random() - 0.5) * 4;
+                this.x += (Math.random() - 0.5) * 3;
+                if (Math.random() < 0.3) particles.push(new Particle(this.x, this.y, '#ff1493'));
                 this.chargeTimer--;
                 if (this.chargeTimer <= 0) {
                     this.chargeState = 'dash';
-                    this.chargeTimer = 22;
+                    this.chargeTimer = 18;
                     playSound('wave');
                 }
                 return;
             } else if (this.chargeState === 'dash') {
                 const dashMult = this.chillTimer > 0 ? (this.chillLevel === 3 ? 0.35 : 0.6) : 1.0;
-                this.x += this.dashDir.x * 8.5 * dashMult;
-                this.y += this.dashDir.y * 8.5 * dashMult;
+                this.x += this.dashDir.x * 5.2 * dashMult; // Kecepatan dash 5.2 (wajar & bisa dihindari)
+                this.y += this.dashDir.y * 5.2 * dashMult;
                 if (Math.random() < 0.5) particles.push(new Particle(this.x, this.y, '#ff1493'));
                 
                 if (dist < (this.width/2 + player.width/2 + 15)) {
-                    player.takeDamage(Math.floor(this.damage * 1.4));
-                    this.chargeState = 'walk';
+                    player.takeDamage(Math.floor(this.damage * 1.25));
+                    // Jeda istirahat / lelah setelah menabrak player
+                    this.chargeState = 'exhausted';
+                    this.chargeTimer = 70; // 1.15 detik delay istirahat
+                    return;
                 }
 
                 this.chargeTimer--;
                 if (this.chargeTimer <= 0) {
+                    // Dash selesai -> lelah sejenak (vulnerability window)
+                    this.chargeState = 'exhausted';
+                    this.chargeTimer = 65;
+                }
+                return;
+            } else if (this.chargeState === 'exhausted') {
+                // Berdiri lelah / jalan tertatih sebentar
+                this.x += (dx / dist) * (moveSpeed * 0.2);
+                this.y += (dy / dist) * (moveSpeed * 0.2);
+                if (Math.random() < 0.15) particles.push(new Particle(this.x, this.y - 10, '#cbd5e1'));
+                this.chargeTimer--;
+                if (this.chargeTimer <= 0) {
                     this.chargeState = 'walk';
+                    this.dashCooldown = 220; // 3.6 detik delay cukup lama sebelum boleh dash lagi!
                 }
                 return;
             }
@@ -2747,8 +2786,8 @@ class Enemy {
         
         // Tambahan gerak gelombang untuk kelelawar
         if (this.type === 'bat') {
-            this.sinOffset = (this.sinOffset || 0) + 0.15;
-            this.y += Math.sin(this.sinOffset) * 2;
+            this.sinOffset = (this.sinOffset || 0) + 0.10;
+            this.y += Math.sin(this.sinOffset) * 1.5;
         }
 
         // Serang Player
@@ -2759,7 +2798,12 @@ class Enemy {
                 this.stateTimer = 0;
             }
             player.takeDamage(this.damage);
-            this.cooldown = 90; // cooldown 1.5 detik
+            this.cooldown = this.type === 'bat' ? 110 : 90; // Kelelawar ada cooldown 1.8 detik setelah menyerang
+            // Kelelawar mundur sejenak setelah menyerang agar tidak menempel terus
+            if (this.type === 'bat') {
+                this.x -= (dx / dist) * 20;
+                this.y -= (dy / dist) * 20;
+            }
             // Player kepukul mundur
             player.x += (dx / dist) * 15;
             player.y += (dy / dist) * 15;
@@ -2914,6 +2958,26 @@ class Enemy {
             ctx.strokeStyle = '#ff2200'; ctx.lineWidth = 3; ctx.stroke();
         }
 
+        // Indikator Aura & Telegraph Laser Khusus Charger Bat
+        if (this.type === 'charger') {
+            ctx.fillStyle = 'rgba(255, 20, 147, 0.22)';
+            ctx.beginPath(); ctx.ellipse(0, this.height/2 + 5, this.width/2 + 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ff1493'; ctx.lineWidth = 1.5; ctx.stroke();
+
+            // Garis bidikan putus-putus saat wind-up persiapan dash
+            if (this.chargeState === 'windup') {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 0, 85, 0.85)';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([8, 6]);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(this.dashDir.x * 160, this.dashDir.y * 160);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
         // Balik muka (hadap kiri) kalau player di kirinya
         if (player.x < this.x) ctx.scale(-1, 1);
         
@@ -2980,12 +3044,16 @@ class Enemy {
             ctx.fillText(this.emoji, 0, 0);
         }
         
-        // Efek visual Stun / Bintang saat Boss Staggered
+        // Efek visual Stun / Bintang saat Boss Staggered atau Charger Exhausted
         if (this.isBoss && this.isStaggered) {
             let stunAngle = Date.now() / 150;
             ctx.font = "14px Arial"; ctx.textAlign = "center";
             ctx.fillText("💫", Math.cos(stunAngle) * 14, -58);
             ctx.fillText("💫", Math.cos(stunAngle + Math.PI) * 14, -58);
+        } else if (this.type === 'charger' && this.chargeState === 'exhausted') {
+            let dizzyAng = Date.now() / 140;
+            ctx.font = "12px Arial"; ctx.textAlign = "center";
+            ctx.fillText("💫", Math.cos(dizzyAng) * 10, -28);
         }
 
         ctx.restore();
@@ -3022,6 +3090,10 @@ class Enemy {
             if (this.isElite) {
                 ctx.font = "8px Arial"; ctx.textAlign = "center";
                 ctx.fillStyle = '#ffd700'; ctx.fillText("★ ELITE", this.x, this.y - 29);
+            } else if (this.type === 'charger') {
+                ctx.font = "bold 8px Arial"; ctx.textAlign = "center";
+                ctx.fillStyle = this.chargeState === 'windup' ? '#ff0000' : (this.chargeState === 'exhausted' ? '#94a3b8' : '#ff1493');
+                ctx.fillText(this.chargeState === 'windup' ? "⚠️ CHARGE!" : (this.chargeState === 'exhausted' ? "EXHAUSTED" : "CHARGER"), this.x, this.y - 29);
             }
         }
 
@@ -3556,6 +3628,38 @@ const btnPause = document.getElementById('btn-pause');
 if (btnPause) btnPause.addEventListener('click', togglePause);
 const btnResume = document.getElementById('btn-resume');
 if (btnResume) btnResume.addEventListener('click', togglePause);
+
+function toggleOnScreenControls() {
+    showOnScreenControls = !showOnScreenControls;
+    if (mobileControls) {
+        if (showOnScreenControls) {
+            mobileControls.classList.remove('hidden');
+            mobileControls.style.display = 'flex';
+        } else {
+            mobileControls.classList.add('hidden');
+            mobileControls.style.display = 'none';
+        }
+    }
+    const btnToggle = document.getElementById('btn-toggle-controls');
+    if (btnToggle) {
+        btnToggle.innerText = showOnScreenControls ? "🎮 BTNS" : "🚫 BTNS";
+    }
+}
+const btnToggleControls = document.getElementById('btn-toggle-controls');
+if (btnToggleControls) btnToggleControls.addEventListener('click', toggleOnScreenControls);
+
+const hudSkillBtn = document.getElementById('hud-skill-btn');
+if (hudSkillBtn) {
+    hudSkillBtn.addEventListener('click', () => {
+        if (player && player.magicCooldown === 0) player.superSkill();
+    });
+}
+const hudDashBtn = document.getElementById('hud-dash-btn');
+if (hudDashBtn) {
+    hudDashBtn.addEventListener('click', () => {
+        if (player) player.dash();
+    });
+}
 
 startBtn.addEventListener('click', startGame);
 
