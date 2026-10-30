@@ -70,6 +70,9 @@
         <!-- Stats Kanan: Level, Koin & Audio -->
         <div class="flex flex-col items-end gap-2 text-white pixel-font text-xs text-shadow pointer-events-auto">
             <div class="flex items-center gap-1.5">
+                <button id="btn-pause" class="bg-gray-800/80 hover:bg-gray-700 px-2 py-1 rounded border-2 border-gray-600 text-[10px] cursor-pointer" title="Pause (P)">
+                    ⏸️
+                </button>
                 <button id="btn-audio" class="bg-gray-800/80 hover:bg-gray-700 px-2 py-1 rounded border-2 border-gray-600 text-[10px] cursor-pointer">
                     🔊 BGM
                 </button>
@@ -153,7 +156,7 @@
             WASD / Arrow Keys to Move<br>
             SPACE: Attack (4 Directions & Projectile Waves)<br>
             SHIFT: Dash Dodge Roll (i-Frames & Ghost Trail)<br>
-            F: Super Magic AoE | B: Blacksmith Shop
+            F: Super Magic AoE | B: Blacksmith Shop | P: Pause
         </p>
         <button id="start-btn" class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white pixel-font text-sm rounded border-4 border-red-800 transition transform hover:scale-105 active:scale-95">
             START GAME
@@ -263,6 +266,15 @@
         </div>
     </div>
 
+    <!-- Pause Game Modal Overlay -->
+    <div id="pause-modal" class="absolute inset-0 bg-black/85 hidden flex-col items-center justify-center z-50 text-white pixel-font p-4">
+        <h2 class="text-2xl sm:text-4xl text-yellow-400 mb-2 tracking-wider text-shadow-lg">⏸️ GAME PAUSED</h2>
+        <p class="text-[10px] sm:text-xs text-gray-400 mb-6 text-center max-w-sm">Game sedang dijeda. Ambil nafas dulu, prajurit!</p>
+        <button id="btn-resume" class="px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded border-2 border-green-400 text-xs transition transform hover:scale-105 active:scale-95 cursor-pointer shadow-lg">
+            ▶️ RESUME (P / ESC)
+        </button>
+    </div>
+
 </div>
 
 <script>
@@ -343,8 +355,14 @@ resizeCanvas();
 // Web Audio API SFX
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let screenShake = 0;
+function triggerHaptic(duration = 20) {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(duration); } catch(e) {}
+    }
+}
 function triggerScreenShake(amount) {
     screenShake = Math.max(screenShake, amount);
+    if (amount >= 6) triggerHaptic(Math.min(50, Math.floor(amount * 3.5)));
 }
 
 function playSound(type) {
@@ -723,11 +741,15 @@ function initWeather() {
 // ==========================================
 // ZEUS LIGHTNING TRAIL ZAP
 // ==========================================
+// ZEUS LIGHTNING TRAIL ZAP
+// ==========================================
 class LightningZap {
-    constructor(x, y) {
+    constructor(x, y, level = 1) {
         this.x = x; this.y = y;
+        this.level = level;
         this.life = 25;
-        this.radius = 45;
+        this.radius = level === 3 ? 65 : (level === 2 ? 55 : 45);
+        this.damage = level === 3 ? 95 : (level === 2 ? 60 : 30);
         this.damagedEnemies = new Set();
     }
     update() {
@@ -736,10 +758,32 @@ class LightningZap {
             if (!this.damagedEnemies.has(e) && e.hp > 0 && e.bossState !== 'die') {
                 if (Math.hypot(e.x - this.x, e.y - this.y) < this.radius + e.width/2) {
                     this.damagedEnemies.add(e);
-                    e.takeDamage(30);
-                    floatingTexts.push(new FloatingText(e.x, e.y - 30, "⚡ 30", "#38bdf8", 16));
+                    e.takeDamage(this.damage);
+                    floatingTexts.push(new FloatingText(e.x, e.y - 30, `⚡ ${this.damage}`, "#38bdf8", 16));
                     playSound('lightning');
-                    for (let p = 0; p < 6; p++) particles.push(new Particle(e.x, e.y, '#38bdf8'));
+                    for (let p = 0; p < 7; p++) particles.push(new Particle(e.x, e.y, '#38bdf8'));
+
+                    // Tier 3: Electric Stun
+                    if (this.level === 3 && !e.isBoss) {
+                        e.chillTimer = Math.max(e.chillTimer || 0, 75);
+                        e.chillLevel = 3;
+                    }
+
+                    // Tier 2+: Chain lightning to nearby secondary enemies
+                    if (this.level >= 2) {
+                        let chainCount = 0;
+                        enemies.forEach(other => {
+                            if (other !== e && !this.damagedEnemies.has(other) && other.hp > 0 && chainCount < 2) {
+                                if (Math.hypot(other.x - e.x, other.y - e.y) < 90) {
+                                    this.damagedEnemies.add(other);
+                                    let chainDmg = Math.floor(this.damage * 0.75);
+                                    other.takeDamage(chainDmg);
+                                    floatingTexts.push(new FloatingText(other.x, other.y - 25, `⚡ ${chainDmg}`, "#00ffff", 14));
+                                    chainCount++;
+                                }
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -747,14 +791,15 @@ class LightningZap {
     draw(ctx) {
         ctx.save();
         ctx.globalAlpha = Math.max(0, this.life / 25);
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = '#00ffff';
-        ctx.shadowBlur = 15;
+        ctx.strokeStyle = this.level === 3 ? '#a855f7' : (this.level === 2 ? '#00ffff' : '#38bdf8');
+        ctx.lineWidth = this.level === 3 ? 4 : (this.level === 2 ? 3.5 : 2.5);
+        ctx.shadowColor = this.level === 3 ? '#c084fc' : '#00ffff';
+        ctx.shadowBlur = 16;
         
         ctx.beginPath();
-        for (let b = 0; b < 3; b++) {
-            let angle = (b * Math.PI * 2 / 3) + Math.random() * 0.4;
+        const branchCount = this.level === 3 ? 5 : (this.level === 2 ? 4 : 3);
+        for (let b = 0; b < branchCount; b++) {
+            let angle = (b * Math.PI * 2 / branchCount) + Math.random() * 0.4;
             let len = this.radius * (0.6 + Math.random() * 0.4);
             let midX = this.x + Math.cos(angle) * (len * 0.5) + (Math.random() - 0.5) * 15;
             let midY = this.y + Math.sin(angle) * (len * 0.5) + (Math.random() - 0.5) * 15;
@@ -771,7 +816,7 @@ class LightningZap {
 let lightningZaps = [];
 
 // ==========================================
-// ROGUELIKE RELIC SYSTEM
+// ROGUELIKE RELIC SYSTEM (TIER 1 - 3 UPGRADES)
 // ==========================================
 const RELIC_DATABASE = {
     zeus_greaves: {
@@ -780,7 +825,12 @@ const RELIC_DATABASE = {
         icon: "⚡",
         rarity: "LEGENDARY",
         color: "#38bdf8",
-        desc: "Dash meninggalkan jejak sambaran petir yang menyengat musuh (30 Damage AoE)."
+        maxTier: 3,
+        tiers: {
+            1: { name: "⚡ Zeus's Greaves I", desc: "Dash menyengat petir (30 Damage AoE)." },
+            2: { name: "⚡ Zeus's Surge II", desc: "Petir diperkuat (60 Dmg AoE) & menyambar 2 musuh di dekatnya." },
+            3: { name: "⚡ Titan's Tempest III", desc: "Badai Petir Titan (95 Dmg AoE) + kejut listrik melumpuhkan musuh!" }
+        }
     },
     orbital_blades: {
         id: 'orbital_blades',
@@ -788,7 +838,12 @@ const RELIC_DATABASE = {
         icon: "🌪️",
         rarity: "MYTHIC",
         color: "#c084fc",
-        desc: "2 pedang energi berputar mengelilingi pemain, menyayat musuh terdekat (18 Damage)."
+        maxTier: 3,
+        tiers: {
+            1: { name: "🌪️ Orbital Blade I", desc: "2 pedang energi berputar mengelilingi pemain (4 Dmg/tick)." },
+            2: { name: "🌪️ Orbital Blade II", desc: "3 pedang energi berputar lebih cepat (7 Dmg/tick)." },
+            3: { name: "🌪️ Astral Storm III", desc: "4 pedang astral berputar sangat cepat (10 Dmg/tick) membelah musuh!" }
+        }
     },
     aegis_shield: {
         id: 'aegis_shield',
@@ -796,7 +851,12 @@ const RELIC_DATABASE = {
         icon: "🛡️",
         rarity: "LEGENDARY",
         color: "#fbbf24",
-        desc: "Membentuk perisai suci yang menepis 1 serangan maut atau damage musuh tiap 35 detik."
+        maxTier: 3,
+        tiers: {
+            1: { name: "🛡️ Aegis Shield I", desc: "Menepis 1 serangan maut musuh tiap 35 detik." },
+            2: { name: "🛡️ Aegis Shield II", desc: "Waktu recharge perisai dipercepat menjadi 22 detik." },
+            3: { name: "🛡️ Divine Aegis III", desc: "Recharge hanya 12 detik + ledakan suci pembalas (40 AoE Dmg)!" }
+        }
     },
     ignite_core: {
         id: 'ignite_core',
@@ -804,7 +864,12 @@ const RELIC_DATABASE = {
         icon: "🔥",
         rarity: "RARE",
         color: "#f97316",
-        desc: "Semua serangan membakar musuh (Burn DoT: 6 Damage/detik selama 3 detik)."
+        maxTier: 3,
+        tiers: {
+            1: { name: "🔥 Molten Core I", desc: "Serangan membakar musuh (4 Dmg/0.5s selama 3 detik)." },
+            2: { name: "🔥 Hellfire Core II", desc: "Api Neraka: Burn DoT naik jadi 8 Dmg/0.5s selama 4 detik." },
+            3: { name: "🔥 Infernal Core III", desc: "Lahar Vulkanik (14 Dmg/0.5s) + musuh meledak membakar sekitarnya saat mati!" }
+        }
     },
     bloodstone: {
         id: 'bloodstone',
@@ -812,7 +877,12 @@ const RELIC_DATABASE = {
         icon: "🩸",
         rarity: "RARE",
         color: "#ef4444",
-        desc: "Tiap 10 monster yang mati memicu ledakan darah yang menyembuhkan +25 HP."
+        maxTier: 3,
+        tiers: {
+            1: { name: "🩸 Bloodstone I", desc: "Tiap 10 monster mati memulihkan +25 HP." },
+            2: { name: "🩸 Bloodstone II", desc: "Tiap 8 monster mati memulihkan +45 HP." },
+            3: { name: "🩸 Blood Feast III", desc: "Tiap 6 monster mati memicu ledakan darah +70 HP!" }
+        }
     },
     frost_ring: {
         id: 'frost_ring',
@@ -820,7 +890,12 @@ const RELIC_DATABASE = {
         icon: "❄️",
         rarity: "RARE",
         color: "#67e8f9",
-        desc: "Serangan berpeluang 40% memperlambat kecepatan musuh sebesar 50% selama 2.5 detik."
+        maxTier: 3,
+        tiers: {
+            1: { name: "❄️ Frostbite Ring I", desc: "40% peluang serangan memperlambat gerak musuh 50% selama 2.5s." },
+            2: { name: "❄️ Frostbite Ring II", desc: "65% peluang serangan memperlambat gerak musuh 65% selama 3.5s." },
+            3: { name: "❄️ Absolute Zero III", desc: "90% peluang serangan: membekukan total musuh selama 1.5 detik!" }
+        }
     },
     midas_magnet: {
         id: 'midas_magnet',
@@ -828,7 +903,12 @@ const RELIC_DATABASE = {
         icon: "🧲",
         rarity: "LEGENDARY",
         color: "#facc15",
-        desc: "Radius sedot koin & gem meluas 3x lipat, serta nilai koin bertambah +30%."
+        maxTier: 3,
+        tiers: {
+            1: { name: "🧲 Midas Magnet I", desc: "Radius sedot koin & gem meluas 3x (330px), koin +30%." },
+            2: { name: "🧲 Midas Magnet II", desc: "Radius sedot meluas 4x (440px), koin +60%." },
+            3: { name: "🧲 Midas Crown III", desc: "Sedot seisi layar (600px), koin berlipat ganda (+100% / 2x)!" }
+        }
     }
 };
 
@@ -891,35 +971,47 @@ function openRelicModal() {
     const container = document.getElementById('relic-cards-container');
     if (!modal || !container) return;
 
-    const ownedIds = player ? player.relics.map(r => r.id) : [];
-    let availableKeys = Object.keys(RELIC_DATABASE).filter(k => !ownedIds.includes(k));
-    
-    if (availableKeys.length < 3) {
-        availableKeys = Object.keys(RELIC_DATABASE);
+    // Filter relik yang belum mencapai tier maksimal (maxTier = 3)
+    let eligibleKeys = Object.keys(RELIC_DATABASE).filter(k => {
+        return player ? player.getRelicLevel(k) < (RELIC_DATABASE[k].maxTier || 3) : true;
+    });
+
+    if (eligibleKeys.length === 0) {
+        eligibleKeys = Object.keys(RELIC_DATABASE);
     }
 
-    let shuffled = [...availableKeys].sort(() => Math.random() - 0.5);
+    let shuffled = [...eligibleKeys].sort(() => Math.random() - 0.5);
     let chosenKeys = shuffled.slice(0, 3);
 
     container.innerHTML = '';
     chosenKeys.forEach(key => {
         const r = RELIC_DATABASE[key];
+        const curLevel = player ? player.getRelicLevel(key) : 0;
+        const nextLevel = Math.min(r.maxTier, curLevel + 1);
+        const isLevelUp = curLevel > 0;
+        const tierData = r.tiers[nextLevel] || { name: r.name, desc: r.desc };
+
         const card = document.createElement('div');
-        card.className = "bg-gray-900/90 border-2 hover:border-yellow-300 p-4 rounded-xl flex flex-col items-center text-center cursor-pointer transform hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)]";
-        card.style.borderColor = r.color;
+        card.className = "bg-gray-900/95 border-2 p-4 rounded-xl flex flex-col items-center text-center cursor-pointer transform hover:scale-105 active:scale-95 transition-all shadow-[0_0_18px_rgba(0,0,0,0.85)]";
+        card.style.borderColor = isLevelUp ? '#38bdf8' : r.color;
         
+        const badgeHtml = isLevelUp
+            ? `<span class="px-2.5 py-0.5 rounded-full text-[8px] font-bold bg-cyan-900/90 text-cyan-300 border border-cyan-400 mb-1.5 animate-pulse">⭐ UPGRADE: TIER ${nextLevel}</span>`
+            : `<span class="px-2.5 py-0.5 rounded-full text-[8px] font-bold bg-amber-900/90 text-yellow-300 border border-yellow-500 mb-1.5">✨ NEW RELIC</span>`;
+
         card.innerHTML = `
             <div class="text-4xl mb-2 filter drop-shadow-[0_0_10px_${r.color}]">${r.icon}</div>
+            ${badgeHtml}
             <span class="text-[8px] uppercase tracking-wider font-bold mb-1" style="color: ${r.color}">${r.rarity}</span>
-            <h3 class="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">${r.name}</h3>
-            <p class="text-[9px] text-gray-300 leading-relaxed mb-4 flex-grow">${r.desc}</p>
-            <button class="w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[9px] rounded uppercase tracking-wider border border-yellow-200 transition">
-                PILIH RELIK
+            <h3 class="text-xs sm:text-sm font-bold text-white mb-2 leading-snug">${tierData.name}</h3>
+            <p class="text-[9px] text-gray-300 leading-relaxed mb-4 flex-grow">${tierData.desc}</p>
+            <button class="w-full py-2.5 ${isLevelUp ? 'bg-cyan-500 hover:bg-cyan-400' : 'bg-yellow-500 hover:bg-yellow-400'} text-black font-bold text-[9px] rounded uppercase tracking-wider border border-white/60 transition shadow-lg">
+                ${isLevelUp ? `UPGRADE KE TIER ${nextLevel}` : 'PILIH RELIK'}
             </button>
         `;
 
         card.addEventListener('click', () => {
-            selectRelic(r);
+            selectRelic(key);
         });
 
         container.appendChild(card);
@@ -929,17 +1021,30 @@ function openRelicModal() {
     modal.classList.add('flex');
 }
 
-function selectRelic(relic) {
+function selectRelic(relicKey) {
     if (!player) return;
-    if (!player.relics.some(r => r.id === relic.id)) {
-        player.relics.push(relic);
+    const rData = RELIC_DATABASE[relicKey];
+    if (!rData) return;
+
+    let existing = player.relics.find(r => r.id === relicKey);
+    let newLevel = 1;
+    if (existing) {
+        existing.level = Math.min(rData.maxTier || 3, existing.level + 1);
+        newLevel = existing.level;
+    } else {
+        player.relics.push({ id: relicKey, level: 1 });
     }
-    
+
+    if (relicKey === 'aegis_shield') {
+        player.aegisReady = true;
+    }
+
     playSound('relic_select');
-    floatingTexts.push(new FloatingText(player.x, player.y - 45, `+ RELIC: ${relic.name}`, relic.color, 16));
+    const tierData = rData.tiers[newLevel] || { name: rData.name };
+    floatingTexts.push(new FloatingText(player.x, player.y - 45, `${newLevel > 1 ? '⭐ UPGRADED: ' : '+ RELIC: '}${tierData.name}`, rData.color, 16));
     triggerScreenShake(6);
     for (let i = 0; i < 25; i++) {
-        particles.push(new Particle(player.x, player.y, relic.color));
+        particles.push(new Particle(player.x, player.y, rData.color));
     }
 
     updateRelicTrayUI();
@@ -957,12 +1062,19 @@ function updateRelicTrayUI() {
     if (!tray || !player) return;
     tray.innerHTML = '';
     
-    player.relics.forEach(r => {
+    player.relics.forEach(entry => {
+        const rData = RELIC_DATABASE[entry.id];
+        if (!rData) return;
+        const tierInfo = rData.tiers[entry.level] || { name: rData.name, desc: rData.desc };
+        
         const badge = document.createElement('div');
-        badge.className = "w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/80 border-2 flex items-center justify-center text-sm shadow cursor-pointer transition hover:scale-110";
-        badge.style.borderColor = r.color;
-        badge.title = `${r.name}: ${r.desc}`;
-        badge.innerText = r.icon;
+        badge.className = "relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black/85 border-2 flex items-center justify-center text-sm shadow cursor-pointer transition hover:scale-110";
+        badge.style.borderColor = rData.color;
+        badge.title = `${tierInfo.name} (Tier ${entry.level}): ${tierInfo.desc}`;
+        badge.innerHTML = `
+            ${rData.icon}
+            <span class="absolute -bottom-1 -right-1 bg-gray-900 border border-yellow-400 text-yellow-300 rounded px-1 text-[7px] font-bold leading-none">T${entry.level}</span>
+        `;
         tray.appendChild(badge);
     });
 }
@@ -1015,7 +1127,8 @@ class CoinLoot {
     }
     update() {
         // Efek Magnet ke Player
-        let magnetDist = (player && player.relics && player.relics.some(r => r.id === 'midas_magnet')) ? 330 : 100;
+        let midasLevel = player ? player.getRelicLevel('midas_magnet') : 0;
+        let magnetDist = midasLevel === 3 ? 600 : (midasLevel === 2 ? 440 : (midasLevel === 1 ? 330 : 100));
         const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
         if (distToPlayer < magnetDist) {
             this.magnetized = true;
@@ -1024,8 +1137,8 @@ class CoinLoot {
         if (this.magnetized) {
             // Bergerak mendekati player otomatis
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
-            this.x += Math.cos(angle) * 8; // Kecepatan magnet
-            this.y += Math.sin(angle) * 8;
+            this.x += Math.cos(angle) * (midasLevel === 3 ? 11 : 8); // Kecepatan magnet
+            this.y += Math.sin(angle) * (midasLevel === 3 ? 11 : 8);
         } else if (this.bounce > 0) {
             // Animasi lompat saat jatuh
             this.x += this.vx;
@@ -1062,7 +1175,8 @@ class ItemLoot {
         this.magnetized = false;
     }
     update() {
-        let magnetDist = (player && player.relics && player.relics.some(r => r.id === 'midas_magnet')) ? 330 : 110;
+        let midasLevel = player ? player.getRelicLevel('midas_magnet') : 0;
+        let magnetDist = midasLevel === 3 ? 600 : (midasLevel === 2 ? 440 : (midasLevel === 1 ? 330 : 110));
         const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
         if (distToPlayer < magnetDist) {
             this.magnetized = true;
@@ -1297,13 +1411,22 @@ class PlayerProjectile {
                 e.takeDamage(this.damage);
                 playSound('hit');
 
-                // Relic elemental effects
-                if (player.relics.some(r => r.id === 'ignite_core')) {
-                    e.burnTimer = Math.max(e.burnTimer, 180);
+                // Relic elemental effects (tiered)
+                const igLevel = player ? player.getRelicLevel('ignite_core') : 0;
+                if (igLevel > 0) {
+                    const bDur = igLevel === 3 ? 300 : (igLevel === 2 ? 240 : 180);
+                    e.burnTimer = Math.max(e.burnTimer || 0, bDur);
+                    e.burnLevel = Math.max(e.burnLevel || 1, igLevel);
                 }
-                if (player.relics.some(r => r.id === 'frost_ring') && Math.random() < 0.4) {
-                    e.chillTimer = Math.max(e.chillTimer, 150);
-                    floatingTexts.push(new FloatingText(e.x, e.y - 22, "❄️ FROSTBITE!", "#38bdf8", 12));
+                const frLevel = player ? player.getRelicLevel('frost_ring') : 0;
+                if (frLevel > 0) {
+                    const fChance = frLevel === 3 ? 0.90 : (frLevel === 2 ? 0.65 : 0.40);
+                    if (Math.random() < fChance) {
+                        const fDur = frLevel === 3 ? 200 : (frLevel === 2 ? 180 : 150);
+                        e.chillTimer = Math.max(e.chillTimer || 0, fDur);
+                        e.chillLevel = Math.max(e.chillLevel || 1, frLevel);
+                        floatingTexts.push(new FloatingText(e.x, e.y - 22, frLevel === 3 ? "❄️ ABSOLUTE ZERO!" : "❄️ FROSTBITE!", "#38bdf8", 12));
+                    }
                 }
 
                 // Knockback peluru
@@ -1448,7 +1571,7 @@ class Player {
         
         // Stats
         this.maxHp = 100; this.hp = 100;
-        this.level = 1; this.xp = 0; this.maxXp = 50;
+        this.level = 1; this.xp = 0; this.maxXp = 95;
         this.attackPower = 15;
 
         // Upgradeable Perks
@@ -1479,12 +1602,22 @@ class Player {
         this.isDashing = false;
         this.dashDir = { x: 1, y: 0 };
 
-        // Roguelike Relics
+        // Roguelike Relics ({ id: string, level: number })
         this.relics = [];
         this.orbitalAngle = 0;
         this.aegisReady = true;
         this.aegisCooldown = 0;
         this.bloodstoneKills = 0;
+    }
+
+    getRelicLevel(id) {
+        if (!this.relics) return 0;
+        const found = this.relics.find(r => r.id === id);
+        return found ? found.level : 0;
+    }
+
+    hasRelic(id) {
+        return this.getRelicLevel(id) > 0;
     }
 
     update() {
@@ -1495,29 +1628,38 @@ class Player {
             if (this.streakTimer === 0) this.killStreak = 0;
         }
 
-        // Orbital Blade Amulet Relic
-        if (this.relics.some(r => r.id === 'orbital_blades')) {
-            this.orbitalAngle += 0.055;
+        // Orbital Blade Amulet Relic (Tiered 1 - 3)
+        const orbLevel = this.getRelicLevel('orbital_blades');
+        if (orbLevel > 0) {
+            const bladeCount = orbLevel === 1 ? 2 : (orbLevel === 2 ? 3 : 4);
+            const rotSpeed = orbLevel === 1 ? 0.055 : (orbLevel === 2 ? 0.075 : 0.095);
+            const bladeDmg = orbLevel === 1 ? 4 : (orbLevel === 2 ? 7 : 10);
+            this.orbitalAngle += rotSpeed;
             const orbitalDist = 58;
-            const bladePositions = [
-                { x: this.x + Math.cos(this.orbitalAngle) * orbitalDist, y: this.y + Math.sin(this.orbitalAngle) * orbitalDist },
-                { x: this.x + Math.cos(this.orbitalAngle + Math.PI) * orbitalDist, y: this.y + Math.sin(this.orbitalAngle + Math.PI) * orbitalDist }
-            ];
+            const bladePositions = [];
+            for (let b = 0; b < bladeCount; b++) {
+                const angle = this.orbitalAngle + (b * (Math.PI * 2 / bladeCount));
+                bladePositions.push({
+                    x: this.x + Math.cos(angle) * orbitalDist,
+                    y: this.y + Math.sin(angle) * orbitalDist
+                });
+            }
 
             bladePositions.forEach(bp => {
                 enemies.forEach(e => {
                     if (e.hp > 0 && e.bossState !== 'die' && Math.hypot(e.x - bp.x, e.y - bp.y) < 24 + e.width/2) {
-                        e.takeDamage(4);
+                        e.takeDamage(bladeDmg);
                         if (Math.random() < 0.2) {
-                            particles.push(new Particle(bp.x, bp.y, '#c084fc'));
+                            particles.push(new Particle(bp.x, bp.y, orbLevel === 3 ? '#ff00ff' : '#c084fc'));
                         }
                     }
                 });
             });
         }
 
-        // Aegis of the Immortal Recharge
-        if (this.relics.some(r => r.id === 'aegis_shield') && !this.aegisReady) {
+        // Aegis of the Immortal Recharge (Tiered Cooldown)
+        const aegisLevel = this.getRelicLevel('aegis_shield');
+        if (aegisLevel > 0 && !this.aegisReady) {
             this.aegisCooldown--;
             if (this.aegisCooldown <= 0) {
                 this.aegisReady = true;
@@ -1559,9 +1701,10 @@ class Player {
 
             if (this.dashTimer % 2 === 0) {
                 ghostTrails.push(new GhostTrail(this.x, this.y, this.visualFacing));
-                // Zeus's Greaves Lightning Trail
-                if (this.relics.some(r => r.id === 'zeus_greaves')) {
-                    lightningZaps.push(new LightningZap(this.x, this.y));
+                // Zeus's Greaves Lightning Trail (Tiered)
+                const zeusLevel = this.getRelicLevel('zeus_greaves');
+                if (zeusLevel > 0) {
+                    lightningZaps.push(new LightningZap(this.x, this.y, zeusLevel));
                 }
             }
             if (this.dashTimer <= 0) {
@@ -1629,7 +1772,10 @@ class Player {
                     continue;
                 } else if (l instanceof CoinLoot) {
                     let earned = l.value;
-                    if (this.relics.some(r => r.id === 'midas_magnet')) earned = Math.ceil(earned * 1.3);
+                    const midasLevel = this.getRelicLevel('midas_magnet');
+                    if (midasLevel === 1) earned = Math.ceil(earned * 1.3);
+                    else if (midasLevel === 2) earned = Math.ceil(earned * 1.6);
+                    else if (midasLevel === 3) earned = Math.ceil(earned * 2.0);
                     coins += earned;
                     coinText.innerText = coins;
                     playSound('coin');
@@ -1685,6 +1831,7 @@ class Player {
         this.invincibleTimer = 16; // full i-frames for dash + recovery
 
         playSound('dash');
+        triggerHaptic(20);
         triggerScreenShake(3);
         ghostTrails.push(new GhostTrail(this.x, this.y, this.visualFacing));
         for (let i = 0; i < 6; i++) {
@@ -1754,13 +1901,22 @@ class Player {
                 enemy.takeDamage(dmg);
                 playSound('hit');
 
-                // Relic elemental effects
-                if (this.relics.some(r => r.id === 'ignite_core')) {
-                    enemy.burnTimer = Math.max(enemy.burnTimer, 180);
+                // Relic elemental effects (tiered)
+                const igLevel = this.getRelicLevel('ignite_core');
+                if (igLevel > 0) {
+                    const bDur = igLevel === 3 ? 300 : (igLevel === 2 ? 240 : 180);
+                    enemy.burnTimer = Math.max(enemy.burnTimer || 0, bDur);
+                    enemy.burnLevel = Math.max(enemy.burnLevel || 1, igLevel);
                 }
-                if (this.relics.some(r => r.id === 'frost_ring') && Math.random() < 0.4) {
-                    enemy.chillTimer = Math.max(enemy.chillTimer, 150);
-                    floatingTexts.push(new FloatingText(enemy.x, enemy.y - 22, "❄️ FROSTBITE!", "#38bdf8", 12));
+                const frLevel = this.getRelicLevel('frost_ring');
+                if (frLevel > 0) {
+                    const fChance = frLevel === 3 ? 0.90 : (frLevel === 2 ? 0.65 : 0.40);
+                    if (Math.random() < fChance) {
+                        const fDur = frLevel === 3 ? 200 : (frLevel === 2 ? 180 : 150);
+                        enemy.chillTimer = Math.max(enemy.chillTimer || 0, fDur);
+                        enemy.chillLevel = Math.max(enemy.chillLevel || 1, frLevel);
+                        floatingTexts.push(new FloatingText(enemy.x, enemy.y - 22, frLevel === 3 ? "❄️ ABSOLUTE ZERO!" : "❄️ FROSTBITE!", "#38bdf8", 12));
+                    }
                 }
 
                 let res = enemy.isBoss ? 0.2 : (enemy.isElite ? 0.35 : 1.0);
@@ -1848,15 +2004,28 @@ class Player {
     takeDamage(amount) {
         if (this.invincibleTimer > 0) return; // Kebal selama iframe!
 
-        // Aegis of the Immortal Relic: block fatal/heavy hit every 35s
-        if (this.relics.some(r => r.id === 'aegis_shield') && this.aegisReady) {
+        // Aegis of the Immortal Relic: block fatal/heavy hit (tiered cooldown)
+        const aegisLevel = this.getRelicLevel('aegis_shield');
+        if (aegisLevel > 0 && this.aegisReady) {
             this.aegisReady = false;
-            this.aegisCooldown = 2100; // 35 detik cooldown
-            this.invincibleTimer = 30; // Extra temporary iframe
-            floatingTexts.push(new FloatingText(this.x, this.y - 30, "🛡️ BLOCKED BY AEGIS!", "#ffd700", 18));
+            this.aegisCooldown = aegisLevel === 3 ? 720 : (aegisLevel === 2 ? 1320 : 2100);
+            this.invincibleTimer = 35; // Extra temporary iframe
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, `🛡️ BLOCKED BY AEGIS ${aegisLevel === 3 ? 'DIVINE!' : '!'}`, "#ffd700", 18));
             playSound('parry');
-            triggerScreenShake(5);
-            for (let p = 0; p < 18; p++) particles.push(new Particle(this.x, this.y, '#ffd700'));
+            triggerScreenShake(6);
+            for (let p = 0; p < 20; p++) particles.push(new Particle(this.x, this.y, '#ffd700'));
+
+            // Tier 3 Divine Aegis retaliation blast!
+            if (aegisLevel === 3) {
+                enemies.forEach(e => {
+                    if (e.hp > 0 && Math.hypot(e.x - this.x, e.y - this.y) < 130) {
+                        e.takeDamage(40);
+                        e.x += (e.x - this.x) * 0.4;
+                        e.y += (e.y - this.y) * 0.4;
+                        for (let p = 0; p < 6; p++) particles.push(new Particle(e.x, e.y, '#ffd700'));
+                    }
+                });
+            }
             return;
         }
 
@@ -1864,6 +2033,7 @@ class Player {
         
         let reduced = Math.max(2, amount - this.armor);
         this.hp -= reduced;
+        triggerHaptic(35);
         floatingTexts.push(new FloatingText(this.x, this.y - this.height, `-${reduced}`, "#ff3333", 16));
         updateUI();
         if (this.hp <= 0) gameOver();
@@ -1881,9 +2051,10 @@ class Player {
     levelUp() {
         this.level++;
         this.xp -= this.maxXp;
-        this.maxXp = Math.floor(65 + (this.level * 45) + (Math.pow(this.level, 1.35) * 8));
-        this.maxHp += 25; this.hp = this.maxHp; // Full heal bonus!
-        this.attackPower += 5;
+        this.maxXp = Math.floor(95 + (this.level * 65) + (Math.pow(this.level, 1.55) * 14));
+        this.maxHp += 20; 
+        this.hp = Math.min(this.maxHp, this.hp + 40);
+        this.attackPower += 3;
         
         playSound('level');
         levelUpMsg.classList.remove('hidden');
@@ -1969,11 +2140,13 @@ class Player {
             ctx.restore();
         }
 
-        // Efek Visual Relic: Orbital Blade Amulet
-        if (this.relics.some(r => r.id === 'orbital_blades')) {
+        // Efek Visual Relic: Orbital Blade Amulet (Tier 1: 2 Blades, Tier 2: 3 Blades, Tier 3: 4 Blades)
+        const orbLevel = this.getRelicLevel('orbital_blades');
+        if (orbLevel > 0) {
+            const bladeCount = orbLevel === 1 ? 2 : (orbLevel === 2 ? 3 : 4);
             const bladeDist = 58;
-            for (let b = 0; b < 2; b++) {
-                const bAngle = this.orbitalAngle + (b * Math.PI);
+            for (let b = 0; b < bladeCount; b++) {
+                const bAngle = this.orbitalAngle + (b * (Math.PI * 2 / bladeCount));
                 const bx = this.x + Math.cos(bAngle) * bladeDist;
                 const by = this.y + Math.sin(bAngle) * bladeDist;
 
@@ -1982,14 +2155,14 @@ class Player {
                 ctx.rotate(bAngle + Math.PI / 2);
 
                 // Blade Outer Glow
-                ctx.shadowColor = '#00ffff';
-                ctx.shadowBlur = 12;
-                ctx.fillStyle = '#38bdf8';
+                ctx.shadowColor = orbLevel === 3 ? '#e879f9' : (orbLevel === 2 ? '#38bdf8' : '#00ffff');
+                ctx.shadowBlur = orbLevel === 3 ? 18 : 12;
+                ctx.fillStyle = orbLevel === 3 ? '#c026d3' : (orbLevel === 2 ? '#0284c7' : '#38bdf8');
                 ctx.beginPath();
-                ctx.moveTo(0, -16);
-                ctx.lineTo(6, 4);
+                ctx.moveTo(0, orbLevel === 3 ? -20 : -16);
+                ctx.lineTo(orbLevel === 3 ? 7 : 6, 4);
                 ctx.lineTo(0, 14);
-                ctx.lineTo(-6, 4);
+                ctx.lineTo(orbLevel === 3 ? -7 : -6, 4);
                 ctx.closePath();
                 ctx.fill();
 
@@ -2009,22 +2182,32 @@ class Player {
         }
 
         // Efek Visual Relic: Aegis of the Immortal (Golden Dome Barrier)
-        if (this.relics.some(r => r.id === 'aegis_shield') && this.aegisReady) {
+        const aegisLevel = this.getRelicLevel('aegis_shield');
+        if (aegisLevel > 0 && this.aegisReady) {
             ctx.save();
             ctx.translate(this.x, this.y);
-            const pulse = Math.sin(Date.now() / 220) * 2.5;
+            const pulse = Math.sin(Date.now() / 220) * (aegisLevel === 3 ? 3.5 : 2.5);
             const shieldRadius = 32 + pulse;
 
-            ctx.shadowColor = '#ffd700';
-            ctx.shadowBlur = 15;
-            ctx.strokeStyle = 'rgba(255, 215, 0, 0.75)';
-            ctx.lineWidth = 2.5;
+            ctx.shadowColor = aegisLevel === 3 ? '#f59e0b' : '#ffd700';
+            ctx.shadowBlur = aegisLevel === 3 ? 22 : 15;
+            ctx.strokeStyle = aegisLevel === 3 ? 'rgba(251, 191, 36, 0.95)' : 'rgba(255, 215, 0, 0.75)';
+            ctx.lineWidth = aegisLevel === 3 ? 3.5 : 2.5;
             ctx.beginPath();
             ctx.arc(0, 0, shieldRadius, 0, Math.PI * 2);
             ctx.stroke();
 
+            // Tier 3: Inner rotating rune ring
+            if (aegisLevel === 3) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, shieldRadius - 6, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
             // Inner translucent golden glow
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.12)';
+            ctx.fillStyle = aegisLevel === 3 ? 'rgba(255, 215, 0, 0.18)' : 'rgba(255, 215, 0, 0.12)';
             ctx.fill();
 
             // Floating mini shield rune
@@ -2032,7 +2215,7 @@ class Player {
             ctx.font = '11px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('🛡️', 0, -shieldRadius - 5);
+            ctx.fillText(aegisLevel === 3 ? '✨🛡️✨' : '🛡️', 0, -shieldRadius - 6);
 
             ctx.restore();
         }
@@ -2320,32 +2503,32 @@ class Enemy {
         this.bossStompTimer = 360;
         this.hasSummonedMinions = false;
         
-        let lvlScale = 1 + (player.level * 0.14);
+        let lvlScale = 1 + (player.level * 0.05);
         if (type === 'slime') {
-            this.hp = 25 + (player.level * 6); this.maxHp = this.hp;
-            this.speed = 1.0; this.color = '#32cd32';
-            this.xp = Math.floor(14 * lvlScale); this.damage = 6; this.emoji = "🟢";
+            this.hp = 35 + (player.level * 8); this.maxHp = this.hp;
+            this.speed = 1.1; this.color = '#32cd32';
+            this.xp = Math.floor(10 * lvlScale); this.damage = 8 + Math.floor(player.level * 0.8); this.emoji = "🟢";
         } else if (type === 'skeleton') {
-            this.hp = 40 + (player.level * 9); this.maxHp = this.hp;
-            this.speed = 1.2; this.color = '#dddddd';
-            this.xp = Math.floor(22 * lvlScale); this.damage = 12; this.emoji = "💀";
+            this.hp = 55 + (player.level * 12); this.maxHp = this.hp;
+            this.speed = 1.25; this.color = '#dddddd';
+            this.xp = Math.floor(16 * lvlScale); this.damage = 14 + Math.floor(player.level * 1.2); this.emoji = "💀";
         } else if (type === 'bat') {
-            this.hp = 20 + (player.level * 4); this.maxHp = this.hp;
-            this.speed = 2.0; this.color = '#8a2be2';
-            this.xp = Math.floor(18 * lvlScale); this.damage = 9; this.emoji = "🦇";
+            this.hp = 28 + (player.level * 5); this.maxHp = this.hp;
+            this.speed = 2.1; this.color = '#8a2be2';
+            this.xp = Math.floor(12 * lvlScale); this.damage = 10 + Math.floor(player.level * 0.9); this.emoji = "🦇";
         } else if (type === 'mage') {
-            this.hp = 30 + (player.level * 6); this.maxHp = this.hp;
-            this.speed = 0.8; this.color = '#ff4400';
-            this.xp = Math.floor(28 * lvlScale); this.damage = 15; this.emoji = "🧙";
+            this.hp = 42 + (player.level * 8); this.maxHp = this.hp;
+            this.speed = 0.95; this.color = '#ff4400';
+            this.xp = Math.floor(20 * lvlScale); this.damage = 16 + Math.floor(player.level * 1.3); this.emoji = "🧙";
         } else if (type === 'shield') {
-            this.hp = 55 + (player.level * 10); this.maxHp = this.hp;
-            this.speed = 1.0; this.color = '#708090';
-            this.xp = Math.floor(38 * lvlScale); this.damage = 14; this.emoji = "🛡️";
+            this.hp = 75 + (player.level * 14); this.maxHp = this.hp;
+            this.speed = 1.05; this.color = '#708090';
+            this.xp = Math.floor(24 * lvlScale); this.damage = 15 + Math.floor(player.level * 1.2); this.emoji = "🛡️";
             this.hasShield = true;
         } else if (type === 'charger') {
-            this.hp = 35 + (player.level * 7); this.maxHp = this.hp;
-            this.speed = 1.3; this.color = '#ff1493';
-            this.xp = Math.floor(34 * lvlScale); this.damage = 16; this.emoji = "🐗";
+            this.hp = 48 + (player.level * 10); this.maxHp = this.hp;
+            this.speed = 1.35; this.color = '#ff1493';
+            this.xp = Math.floor(22 * lvlScale); this.damage = 18 + Math.floor(player.level * 1.4); this.emoji = "🐗";
         }
 
         // Elite roll jika level >= 6 dan bukan boss
@@ -2369,7 +2552,9 @@ class Enemy {
         this.staggerTimer = 0;
         this.isEnraged = false;
         this.burnTimer = 0;
+        this.burnLevel = 1;
         this.chillTimer = 0;
+        this.chillLevel = 1;
     }
 
     takePoiseDamage(amount) {
@@ -2469,18 +2654,25 @@ class Enemy {
         if (this.burnTimer > 0) {
             this.burnTimer--;
             if (this.burnTimer % 30 === 0) {
-                this.takeDamage(4);
-                for (let p = 0; p < 2; p++) particles.push(new Particle(this.x + (Math.random() - 0.5) * 16, this.y + (Math.random() - 0.5) * 16, '#ff4400'));
+                let dotDmg = this.burnLevel === 3 ? 14 : (this.burnLevel === 2 ? 8 : 4);
+                this.takeDamage(dotDmg);
+                for (let p = 0; p < (this.burnLevel === 3 ? 4 : 2); p++) {
+                    particles.push(new Particle(this.x + (Math.random() - 0.5) * 16, this.y + (Math.random() - 0.5) * 16, this.burnLevel === 3 ? '#ff2200' : '#ff4400'));
+                }
             }
         }
         if (this.chillTimer > 0) {
             this.chillTimer--;
-            if (Math.random() < 0.12) {
-                particles.push(new Particle(this.x + (Math.random() - 0.5) * 16, this.y + (Math.random() - 0.5) * 16, '#38bdf8'));
+            if (Math.random() < (this.chillLevel === 3 ? 0.25 : 0.12)) {
+                particles.push(new Particle(this.x + (Math.random() - 0.5) * 16, this.y + (Math.random() - 0.5) * 16, this.chillLevel === 3 ? '#a5f3fc' : '#38bdf8'));
             }
         }
 
-        const moveSpeed = this.speed * (this.chillTimer > 0 ? 0.5 : 1.0);
+        let chillSlow = 1.0;
+        if (this.chillTimer > 0) {
+            chillSlow = this.chillLevel === 3 ? 0.20 : (this.chillLevel === 2 ? 0.35 : 0.50);
+        }
+        const moveSpeed = this.speed * chillSlow;
 
         // Jalan ke arah player
         const dx = player.x - this.x;
@@ -2502,7 +2694,7 @@ class Enemy {
                 const px = (dx / dist) * 2;
                 const py = (dy / dist) * 2;
                 enemyProjectiles.push(new EnemyProjectile(this.x, this.y, px, py, this.damage));
-                this.cooldown = 240; // tembak per 4 detik
+                this.cooldown = Math.max(140, 240 - player.level * 6); // tembak lebih sering seiring level naik
             }
             return;
         }
@@ -2516,7 +2708,7 @@ class Enemy {
                 }
                 if (dist < 220 && dist > 60 && Math.random() < 0.02) {
                     this.chargeState = 'windup';
-                    this.chargeTimer = 25;
+                    this.chargeTimer = 18;
                     this.dashDir = { x: dx / dist, y: dy / dist };
                     floatingTexts.push(new FloatingText(this.x, this.y - 20, "!", "#ff1493", 22));
                 }
@@ -2530,9 +2722,9 @@ class Enemy {
                 }
                 return;
             } else if (this.chargeState === 'dash') {
-                const dashMult = this.chillTimer > 0 ? 0.6 : 1.0;
-                this.x += this.dashDir.x * 7.5 * dashMult;
-                this.y += this.dashDir.y * 7.5 * dashMult;
+                const dashMult = this.chillTimer > 0 ? (this.chillLevel === 3 ? 0.35 : 0.6) : 1.0;
+                this.x += this.dashDir.x * 8.5 * dashMult;
+                this.y += this.dashDir.y * 8.5 * dashMult;
                 if (Math.random() < 0.5) particles.push(new Particle(this.x, this.y, '#ff1493'));
                 
                 if (dist < (this.width/2 + player.width/2 + 15)) {
@@ -2598,19 +2790,34 @@ class Enemy {
     }
 
     finishDie() {
-        // Kill Streak Momentum XP Bonus
+        // Kill Streak Momentum XP Bonus (rebalanced & capped at 1.4x)
         player.killStreak++;
         player.streakTimer = 180; // 3 detik window streak
         let streakMult = 1.0;
-        if (player.killStreak >= 6) streakMult = 2.0;
-        else if (player.killStreak >= 4) streakMult = 1.6;
-        else if (player.killStreak >= 2) streakMult = 1.25;
+        if (player.killStreak >= 6) streakMult = 1.4;
+        else if (player.killStreak >= 4) streakMult = 1.25;
+        else if (player.killStreak >= 2) streakMult = 1.1;
 
         let totalXp = Math.floor(this.xp * streakMult);
         player.gainXp(totalXp);
         
         if (player.killStreak >= 3 && !this.isBoss) {
             floatingTexts.push(new FloatingText(player.x, player.y - 35, `STREAK x${player.killStreak}! (+${Math.round((streakMult-1)*100)}% XP)`, "#00ffff", 14));
+        }
+
+        // Molten Core (Ignite Core Tier 3): corpse explosion dealing 25 AoE damage
+        if (this.burnLevel === 3 && this.burnTimer > 0) {
+            triggerScreenShake(4);
+            playSound('shatter');
+            floatingTexts.push(new FloatingText(this.x, this.y - 30, "💥 MOLTEN BURST!", "#ff3300", 16));
+            for (let p = 0; p < 16; p++) particles.push(new Particle(this.x, this.y, '#ff3300'));
+            enemies.forEach(other => {
+                if (other !== this && Math.hypot(other.x - this.x, other.y - this.y) < 110) {
+                    other.takeDamage(25);
+                    other.burnTimer = Math.max(other.burnTimer || 0, 180);
+                    other.burnLevel = 3;
+                }
+            });
         }
 
         for(let i=0; i<15; i++) particles.push(new Particle(this.x, this.y, this.color));
@@ -2622,12 +2829,15 @@ class Enemy {
             updateUI();
         }
 
-        // Vampiric Bloodstone Relic: heal +25 HP every 10 kills
-        if (player.relics.some(r => r.id === 'bloodstone')) {
+        // Vampiric Bloodstone Relic: scaled by tier
+        const bloodLevel = player.getRelicLevel('bloodstone');
+        if (bloodLevel > 0) {
             player.bloodstoneKills++;
-            if (player.bloodstoneKills % 10 === 0) {
-                player.hp = Math.min(player.maxHp, player.hp + 25);
-                floatingTexts.push(new FloatingText(player.x, player.y - 45, "🩸 BLOODSTONE REAP! +25 HP", "#ef4444", 16));
+            const killsNeeded = bloodLevel === 3 ? 6 : (bloodLevel === 2 ? 8 : 10);
+            const healAmount = bloodLevel === 3 ? 70 : (bloodLevel === 2 ? 45 : 25);
+            if (player.bloodstoneKills % killsNeeded === 0) {
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                floatingTexts.push(new FloatingText(player.x, player.y - 45, `🩸 BLOODSTONE REAP! +${healAmount} HP`, "#ef4444", 16));
                 playSound('heal');
                 for (let p = 0; p < 14; p++) particles.push(new Particle(player.x, player.y, '#ef4444'));
                 updateUI();
@@ -2638,7 +2848,7 @@ class Enemy {
             // Boss drops Golden Mystic Chest (Roguelike Relic Choice)
             loot.push(new RelicChest(this.x, this.y));
 
-            // Boss drop 25 koin tersebar + 2 Heart + 1 Sword + 1 Mythic Soul Orb (+350-500 XP)!
+            // Boss drop 25 koin tersebar + 2 Heart + 1 Sword + 1 Mythic Soul Orb (+220-350 XP)!
             for (let k = 0; k < 5; k++) {
                 let offX = (Math.random() - 0.5) * 60;
                 let offY = (Math.random() - 0.5) * 60;
@@ -2647,7 +2857,7 @@ class Enemy {
             loot.push(new ItemLoot(this.x - 20, this.y, 'heart'));
             loot.push(new ItemLoot(this.x + 20, this.y, 'heart'));
             loot.push(new ItemLoot(this.x, this.y + 20, 'sword'));
-            loot.push(new ItemLoot(this.x, this.y - 20, 'orb', Math.floor(350 + player.level * 45)));
+            loot.push(new ItemLoot(this.x, this.y - 20, 'orb', Math.floor(220 + player.level * 25)));
             floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, "BOSS DEFEATED! MYSTIC CHEST UNLOCKED", "#ffd700", 26));
 
             // Switch BGM back to explore
@@ -2662,10 +2872,10 @@ class Enemy {
                 setBiome('citadel');
             }
         } else if (this.isElite) {
-            // Elite drops 5 coins + high heart drop + Soul Gem (+120 XP)
+            // Elite drops 5 coins + high heart drop + Soul Gem (+80-150 XP)
             loot.push(new CoinLoot(this.x, this.y, 5));
             if (Math.random() < 0.5) loot.push(new ItemLoot(this.x - 15, this.y, 'heart'));
-            loot.push(new ItemLoot(this.x + 15, this.y, 'gem', Math.floor(120 + player.level * 18)));
+            loot.push(new ItemLoot(this.x + 15, this.y, 'gem', Math.floor(80 + player.level * 10)));
             floatingTexts.push(new FloatingText(this.x, this.y - 30, "★ ELITE DEFEATED! +5 COINS & GEM", "#ffd700", 16));
         } else {
             // Normal monster drops
@@ -2673,11 +2883,11 @@ class Enemy {
             loot.push(new CoinLoot(this.x, this.y, coinVal));
             
             let rand = Math.random();
-            if (rand < 0.12) {
-                loot.push(new ItemLoot(this.x, this.y, 'gem')); // 12% chance for XP gem!
-            } else if (rand < 0.22) {
+            if (rand < 0.04) {
+                loot.push(new ItemLoot(this.x, this.y, 'gem', Math.floor(40 + player.level * 6))); // 4% rare gem
+            } else if (rand < 0.14) {
                 loot.push(new ItemLoot(this.x + 10, this.y, 'heart'));
-            } else if (rand < 0.30) {
+            } else if (rand < 0.22) {
                 loot.push(new ItemLoot(this.x - 10, this.y, 'sword'));
             }
         }
@@ -2877,12 +3087,12 @@ function spawnEnemy() {
             boss.name = bossName;
             boss.badge = bossBadge;
 
-            // Stat Boss yang seimbang agar poise sempat pecah sebelum HP habis
-            boss.hp = 360 + player.level * 60; boss.maxHp = boss.hp;
-            boss.damage = 15 + player.level * 2; 
-            boss.speed = 1.0; 
-            boss.xp = 450 + player.level * 65;
-            boss.poise = 75; boss.maxPoise = 75;
+            // Stat Boss yang seimbang dan menantang
+            boss.hp = 450 + player.level * 75; boss.maxHp = boss.hp;
+            boss.damage = 18 + Math.floor(player.level * 2.5); 
+            boss.speed = 1.05; 
+            boss.xp = 280 + player.level * 35;
+            boss.poise = 85 + Math.floor(player.level * 1.5); boss.maxPoise = boss.poise;
             boss.width = 60; boss.height = 60; // hitbox besar
             enemies.push(boss);
             floatingTexts.push(new FloatingText(canvas.width/2, canvas.height/2, "BOSS BATTLE!", "#ff0000", 40));
@@ -2957,11 +3167,30 @@ function drawBackground() {
     }
 }
 
+let isGamePaused = false;
+function togglePause() {
+    if (!isPlaying || isRelicModalOpen) return;
+    const shopScreen = document.getElementById('shop-screen');
+    if (shopScreen && !shopScreen.classList.contains('hidden')) return;
+
+    isGamePaused = !isGamePaused;
+    const pauseModal = document.getElementById('pause-modal');
+    if (pauseModal) {
+        if (isGamePaused) {
+            pauseModal.classList.remove('hidden');
+            pauseModal.classList.add('flex');
+        } else {
+            pauseModal.classList.remove('flex');
+            pauseModal.classList.add('hidden');
+        }
+    }
+}
+
 function gameLoop(timestamp) {
     if (!isPlaying) return;
 
-    // Freeze game world updates while choosing a Relic!
-    if (isRelicModalOpen) {
+    // Freeze game world updates while choosing a Relic or Paused!
+    if (isRelicModalOpen || isGamePaused) {
         animationId = requestAnimationFrame(gameLoop);
         return;
     }
@@ -3068,6 +3297,10 @@ function startGame() {
     startBGM();
     setBGMMode('explore');
 
+    isGamePaused = false;
+    const pauseModal = document.getElementById('pause-modal');
+    if (pauseModal) { pauseModal.classList.remove('flex'); pauseModal.classList.add('hidden'); }
+
     isPlaying = true;
     menuScreen.classList.add('hidden');
     updateUI();
@@ -3078,6 +3311,9 @@ function startGame() {
 
 function gameOver() {
     isPlaying = false;
+    isGamePaused = false;
+    const pauseModal = document.getElementById('pause-modal');
+    if (pauseModal) { pauseModal.classList.remove('flex'); pauseModal.classList.add('hidden'); }
     cancelAnimationFrame(animationId);
     stopBGM();
 
@@ -3108,6 +3344,10 @@ window.addEventListener('keydown', (e) => {
         const shopScreen = document.getElementById('shop-screen');
         if (shopScreen.classList.contains('hidden')) openShop();
         else closeShop();
+    }
+    if (e.code === 'KeyP' || e.code === 'Escape') {
+        togglePause();
+        e.preventDefault();
     }
 });
 window.addEventListener('keyup', (e) => {
@@ -3311,6 +3551,11 @@ if (btnSkill) {
         if (player && player.magicCooldown === 0) player.superSkill(); 
     });
 }
+
+const btnPause = document.getElementById('btn-pause');
+if (btnPause) btnPause.addEventListener('click', togglePause);
+const btnResume = document.getElementById('btn-resume');
+if (btnResume) btnResume.addEventListener('click', togglePause);
 
 startBtn.addEventListener('click', startGame);
 
